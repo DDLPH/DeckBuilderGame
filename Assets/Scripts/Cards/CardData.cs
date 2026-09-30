@@ -1,16 +1,37 @@
+using System.Collections.Generic;
 using UnityEngine;
 
-public class CardData : MonoBehaviour
+[CreateAssetMenu(fileName = "New Card", menuName = "Cards/Card")]
+public class CardData : ScriptableObject
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
+    [Header("Basic Info")]
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+    [SerializeField] private string cardName;
+    [SerializeField] private string description;
+
+    [SerializeField] private CardType cardType;
+    [SerializeField] private CardRarity rarity;
+
+    [Header("Card Stats")]
+    [SerializeField] private int energyCost;
+    
+    [Header("Card Effects")]
+
+    [SerializeField] private List<CardEffect> effects;
+
+    [Header("Upgrade")]
+    [SerializeField] private CardData upgradedCard;
+
+    public string CardName => cardName;
+    public string Description => description;
+    
+    public CardType CardType => cardType;
+    public CardRarity Rarity => rarity;
+    
+    public int EnergyCost => energyCost;
+
+    public List<CardEffect> Effects => effects;
+
+    public CardData UpgradedCard => upgradedCard;
+
 }
