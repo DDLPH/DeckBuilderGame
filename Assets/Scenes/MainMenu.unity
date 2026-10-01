@@ -3523,6 +3523,7 @@ GameObject:
   - component: {fileID: 1953693406}
   - component: {fileID: 1953693405}
   - component: {fileID: 1953693409}
+  - component: {fileID: 4200000002}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
@@ -3643,6 +3644,18 @@ MonoBehaviour:
   languageButton: {fileID: 765261564}
   settingsLanguageButton: {fileID: 1009866198}
   closeSettingsButton: {fileID: 1363452929}
+--- !u!114 &4200000002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1953693404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f9d35a1e6e534728b7377502f84d02d9, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::CosmicMenuAmbience
 --- !u!1 &2053842426
 GameObject:
   m_ObjectHideFlags: 0

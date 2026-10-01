@@ -14,6 +14,8 @@ assets can be reused when the other scenes are designed later.
 
 The background is a separate texture with no baked-in text or buttons. Interactive
 elements remain Unity UI so they can respond to input and change language.
+`CosmicMenuAmbience` adds a few softly twinkling stars and a slow eclipse-halo pulse
+at runtime. These effects do not intercept clicks and do not require sprite sheets.
 
 ## Apply to scenes
 
