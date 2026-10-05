@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -15,6 +16,19 @@ public sealed class CosmicMenuActions : MonoBehaviour
 
     private void Start()
     {
+        AudioSource clickSound = GameObject.Find("MainMenuSFX")?.GetComponent<AudioSource>();
+
+        // Visual feedback is added at runtime so existing scene button callbacks and
+        // the user's click sounds are left untouched.
+        AddButtonEffect(transform.Find("StartButton"), clickSound);
+        AddButtonEffect(transform.Find("ContinueButton"));
+        AddButtonEffect(settingsButton != null ? settingsButton.transform : null);
+        AddButtonEffect(quitButton != null ? quitButton.transform : null);
+        // These two buttons have no working click-sound callback in the scene.
+        AddButtonEffect(languageButton != null ? languageButton.transform : null, clickSound);
+        AddButtonEffect(settingsLanguageButton != null ? settingsLanguageButton.transform : null);
+        AddButtonEffect(closeSettingsButton != null ? closeSettingsButton.transform : null);
+
         if (settingsButton != null) settingsButton.onClick.AddListener(OpenSettings);
         if (quitButton != null) quitButton.onClick.AddListener(QuitGame);
         if (languageButton != null) languageButton.onClick.AddListener(ToggleLanguage);
@@ -64,7 +78,27 @@ public sealed class CosmicMenuActions : MonoBehaviour
 #if UNITY_EDITOR
         Debug.Log("Quit is available in a built game.");
 #else
-        Application.Quit();
+        // The scene's AudioSource.Play callback runs before this listener.
+        StartCoroutine(QuitAfterClick());
 #endif
+    }
+
+#if !UNITY_EDITOR
+    private IEnumerator QuitAfterClick()
+    {
+        yield return new WaitForSecondsRealtime(0.22f);
+        Application.Quit();
+    }
+#endif
+
+    private static void AddButtonEffect(Transform buttonTransform, AudioSource clickSound = null)
+    {
+        if (buttonTransform == null || buttonTransform.GetComponent<Button>() == null) return;
+        CosmicButtonEffect effect = buttonTransform.GetComponent<CosmicButtonEffect>();
+        if (effect == null)
+        {
+            effect = buttonTransform.gameObject.AddComponent<CosmicButtonEffect>();
+        }
+        effect.clickSound = clickSound;
     }
 }

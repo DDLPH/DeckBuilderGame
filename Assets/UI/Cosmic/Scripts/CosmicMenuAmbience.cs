@@ -3,16 +3,22 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Small, non-interactive motion behind the Main Menu controls.
-/// The background art stays still; only a few stars and the eclipse halo breathe.
+/// The background art stays still; only the stars and eclipse halo breathe.
 /// </summary>
 public sealed class CosmicMenuAmbience : MonoBehaviour
 {
     private static readonly Vector2[] StarPositions =
     {
-        new Vector2(0.40f, 0.89f), new Vector2(0.49f, 0.77f),
-        new Vector2(0.57f, 0.94f), new Vector2(0.63f, 0.68f),
-        new Vector2(0.69f, 0.88f), new Vector2(0.75f, 0.61f),
-        new Vector2(0.93f, 0.92f), new Vector2(0.95f, 0.68f)
+        // Keep the left side clear for the title and menu buttons.
+        new Vector2(0.39f, 0.83f), new Vector2(0.43f, 0.95f),
+        new Vector2(0.48f, 0.72f), new Vector2(0.52f, 0.88f),
+        new Vector2(0.56f, 0.97f), new Vector2(0.59f, 0.62f),
+        new Vector2(0.62f, 0.78f), new Vector2(0.66f, 0.91f),
+        new Vector2(0.71f, 0.67f), new Vector2(0.75f, 0.96f),
+        new Vector2(0.79f, 0.57f), new Vector2(0.82f, 0.87f),
+        new Vector2(0.86f, 0.73f), new Vector2(0.89f, 0.98f),
+        new Vector2(0.92f, 0.62f), new Vector2(0.95f, 0.85f),
+        new Vector2(0.97f, 0.95f), new Vector2(0.99f, 0.71f)
     };
 
     private RawImage halo;
@@ -43,7 +49,7 @@ public sealed class CosmicMenuAmbience : MonoBehaviour
         stars = new RawImage[StarPositions.Length];
         for (int i = 0; i < stars.Length; i++)
         {
-            float size = 12f + (i % 3) * 4f;
+            float size = 10f + (i % 4) * 3f;
             stars[i] = CreateImage(layerRect, "TwinklingStar" + (i + 1), starTexture,
                 StarPositions[i], new Vector2(size, size));
         }
@@ -59,8 +65,8 @@ public sealed class CosmicMenuAmbience : MonoBehaviour
 
         for (int i = 0; i < stars.Length; i++)
         {
-            float twinkle = 0.5f + 0.5f * Mathf.Sin(time * (1.35f + i * 0.12f) + i * 1.7f);
-            stars[i].color = new Color(0.88f, 0.80f, 1f, Mathf.Lerp(0.12f, 0.63f, twinkle));
+            float twinkle = 0.5f + 0.5f * Mathf.Sin(time * (1.1f + i * 0.17f) + i * 1.7f);
+            stars[i].color = new Color(0.88f, 0.80f, 1f, Mathf.Lerp(0.16f, 0.78f, twinkle));
         }
     }
 
