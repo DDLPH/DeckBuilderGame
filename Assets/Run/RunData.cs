@@ -53,6 +53,8 @@ public class RunData
         State = RunState.Completed;
     }
 
+    public void FailRun() { State = RunState.Failed; }
+
 
     public void AddGold(int amount)
     {

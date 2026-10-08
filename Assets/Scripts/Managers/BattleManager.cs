@@ -552,12 +552,20 @@ public class BattleManager : MonoBehaviour
             return;
         }
 
+        if (runManager.IsCurrentNodeBoss())
+        {
+            EndBattle();
+            runManager.ShowRunResult(true);
+            return;
+        }
         runManager.GoToReward();
     }
 
     private void HandlePlayerLose()
     {
         Debug.Log("Player Loses!");
+        RunManager runManager = FindAnyObjectByType<RunManager>();
+        if (runManager != null) runManager.ShowRunResult(false);
 
         EndBattle();
     }

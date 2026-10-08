@@ -33,7 +33,7 @@ public sealed class MapEventOverlay : MonoBehaviour
         overlay.transform.SetAsLastSibling();
         RectTransform rect = overlay.GetComponent<RectTransform>();
         Stretch(rect);
-        overlay.GetComponent<Image>().color = new Color(0.015f, 0.01f, 0.045f, 0.83f);
+        overlay.GetComponent<Image>().color = CosmicUITheme.Scrim;
         overlay.GetComponent<MapEventOverlay>().Build(manager);
     }
 
@@ -50,8 +50,7 @@ public sealed class MapEventOverlay : MonoBehaviour
         RectTransform panel = card.GetComponent<RectTransform>();
         panel.anchorMin = panel.anchorMax = new Vector2(0.5f, 0.5f);
         panel.sizeDelta = new Vector2(700f, 450f);
-        card.GetComponent<Image>().color = new Color(0.065f, 0.045f, 0.13f, 0.98f);
-        card.GetComponent<Outline>().effectColor = new Color(0.58f, 0.39f, 0.71f);
+        CosmicUITheme.StylePanel(panel);
 
         title = AddText(panel, font, 43f, -66f, 620f, 62f);
         description = AddText(panel, font, 27f, -164f, 620f, 105f);
@@ -89,6 +88,8 @@ public sealed class MapEventOverlay : MonoBehaviour
         labelRect.anchorMin = labelRect.anchorMax = new Vector2(0.5f, 0.5f);
         labelRect.pivot = new Vector2(0.5f, 0.5f);
         labelRect.anchoredPosition = Vector2.zero;
+        CosmicUITheme.StyleButton(button);
+        buttonObject.AddComponent<CosmicButtonEffect>();
         return label;
     }
 
@@ -107,10 +108,11 @@ public sealed class MapEventOverlay : MonoBehaviour
         TextMeshProUGUI text = item.GetComponent<TextMeshProUGUI>();
         if (font != null) text.font = font;
         text.fontSize = size;
-        text.color = new Color(0.92f, 0.85f, 0.75f);
+        text.color = CosmicUITheme.Ivory;
         text.alignment = TextAlignmentOptions.Center;
         text.enableAutoSizing = true;
         text.fontSizeMin = 19f;
+        text.fontSizeMax = size;
         text.raycastTarget = false;
         return text;
     }

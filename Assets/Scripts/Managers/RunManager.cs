@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using TMPro;
 
 public class RunManager : MonoBehaviour
 {
@@ -15,6 +16,8 @@ public class RunManager : MonoBehaviour
     [SerializeField] private CardData strikeCard;
     [SerializeField] private CardData defendCard;
     [SerializeField] private CardData[] saveableCards;
+    [SerializeField] private TMP_FontAsset englishFont;
+    [SerializeField] private TMP_FontAsset thaiFont;
 
     private static RunManager instance;
     private static bool continueRequested;
@@ -43,6 +46,7 @@ public class RunManager : MonoBehaviour
         if (instance == this)
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
+            instance = null;
         }
     }
     
@@ -54,6 +58,12 @@ public class RunManager : MonoBehaviour
             return;
         }
     
+        if (mapUIManager == null || strikeCard == null || defendCard == null)
+        {
+            Debug.LogError("Run cannot start: map UI or starter cards are missing.");
+            return;
+        }
+
         if (mapManager == null)
         {
             Debug.LogError("MapManager is not assigned");
@@ -289,6 +299,7 @@ public class RunManager : MonoBehaviour
 
     public bool CanMoveToNode(MapNode node)
     {
+        if (eventPending) return false;
         /*
         Debug.Log(
             "===== CanMoveToNode CHECK ====="
@@ -503,6 +514,13 @@ public class RunManager : MonoBehaviour
         Scene scene,
         LoadSceneMode mode)
     {
+        if (scene.name == "MainMenu")
+        {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            if (instance == this) instance = null;
+            Destroy(gameObject);
+            return;
+        }
         /*
         Debug.Log(
             "===== SCENE LOADED ===== " +
@@ -654,6 +672,14 @@ public class RunManager : MonoBehaviour
         if (!SaveCheckpoint())
         {
             Debug.LogError("Could not return to menu because the run did not save.");
+            MapHudUI hud = FindAnyObjectByType<MapHudUI>();
+            bool thai = CosmicLanguage.IsThai;
+            CosmicModalDialog.Show(GameObject.Find("MapCanvas").GetComponent<Canvas>(),
+                hud == null ? null : hud.GetFont(thai),
+                thai ? "บันทึกไม่สำเร็จ" : "SAVE FAILED",
+                thai ? "ยังไม่กลับเมนูเพื่อป้องกันความคืบหน้าหาย กรุณาตรวจพื้นที่ว่างและสิทธิ์เขียนไฟล์ แล้วลองอีกครั้ง"
+                    : "Your run is still open. Check free disk space and file permissions, then try again.",
+                thai ? "ตกลง" : "OK", null);
             return;
         }
         SceneManager.sceneLoaded -= OnSceneLoaded;
@@ -665,6 +691,27 @@ public class RunManager : MonoBehaviour
     public bool SaveCheckpoint()
     {
         return IsRunActive() && RunSaveSystem.TryWrite(CurrentRun, eventPending);
+    }
+
+    public void FailRun()
+    {
+        if (CurrentRun == null) return;
+        CurrentRun.FailRun();
+        eventPending = false;
+        RunSaveSystem.Delete();
+    }
+
+    public void ShowRunResult(bool won)
+    {
+        if (!IsRunActive()) return;
+        if (won) CompleteRun(); else FailRun();
+        bool thai = CosmicLanguage.IsThai;
+        CosmicModalDialog.Show(FindAnyObjectByType<Canvas>(), thai ? thaiFont : englishFont,
+            won ? (thai ? "พ้นจากความว่างเปล่า" : "RUN COMPLETE")
+                : (thai ? "การเดินทางสิ้นสุด" : "RUN ENDED"),
+            won ? (thai ? "คุณเอาชนะบอสได้แล้ว การเดินทางรอบนี้เสร็จสิ้น" : "You defeated the boss. This run is complete.")
+                : (thai ? "คุณพ่ายแพ้ในรอบนี้ กลับไปเริ่มการเดินทางครั้งใหม่ได้ที่เมนูหลัก" : "You fell in battle. Return to the menu to begin a new journey."),
+            thai ? "กลับเมนูหลัก" : "MAIN MENU", () => SceneManager.LoadScene("MainMenu"));
     }
 
     private bool TryRestoreRun()

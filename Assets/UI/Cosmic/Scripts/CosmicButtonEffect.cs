@@ -14,24 +14,22 @@ public sealed class CosmicButtonEffect : MonoBehaviour,
 {
     // Only assigned to buttons without an existing AudioSource.Play callback.
     public AudioSource clickSound;
+    public bool primaryAction;
+    private AstralMapGraphic frame;
 
-    private static readonly Color NormalFill = new Color(0.065f, 0.055f, 0.13f, 0.94f);
-    private static readonly Color HoverFill = new Color(0.15f, 0.10f, 0.23f, 0.98f);
-    private static readonly Color PressFill = new Color(0.23f, 0.14f, 0.30f, 1f);
-    private static readonly Color DisabledFill = new Color(0.06f, 0.05f, 0.11f, 0.70f);
-    private static readonly Color NormalBorder = new Color(0.46f, 0.34f, 0.57f, 0.75f);
-    private static readonly Color BrightBorder = new Color(0.77f, 0.60f, 0.89f, 1f);
-    private static readonly Color NormalText = new Color(0.85f, 0.82f, 0.75f, 1f);
+    private static readonly Color NormalFill = CosmicUITheme.ButtonFill;
+    private static readonly Color HoverFill = new Color(.075f, .044f, .12f, .98f);
+    private static readonly Color PressFill = new Color(.115f, .066f, .18f, 1f);
+    private static readonly Color DisabledFill = new Color(.018f, .014f, .036f, .72f);
+    private static readonly Color NormalBorder = CosmicUITheme.Border;
+    private static readonly Color BrightBorder = CosmicUITheme.Accent;
+    private static readonly Color NormalText = CosmicUITheme.Ivory;
     private static readonly Color BrightText = new Color(1f, 0.95f, 0.84f, 1f);
     private static readonly Color DisabledText = new Color(0.58f, 0.55f, 0.61f, 1f);
 
     private Button button;
     private Image background;
-    private Outline outline;
     private TMP_Text label;
-    private RawImage topRule;
-    private RawImage leftDiamond;
-    private RawImage rightDiamond;
     private Vector3 originalScale;
     private float emphasis;
     private float press;
@@ -43,15 +41,13 @@ public sealed class CosmicButtonEffect : MonoBehaviour,
     {
         button = GetComponent<Button>();
         background = GetComponent<Image>();
-        outline = GetComponent<Outline>();
         label = GetComponentInChildren<TMP_Text>(true);
         originalScale = transform.localScale;
 
         // Unity's Color Tint would compete with the smooth animation below.
         button.transition = Selectable.Transition.None;
-        topRule = CreateTopRule();
-        leftDiamond = CreateDiamond("LeftStar", true);
-        rightDiamond = CreateDiamond("RightStar", false);
+        CosmicUITheme.StyleButton(button);
+        frame = CosmicUITheme.Frame(transform, true);
         Apply(0f, 0f, true);
     }
 
@@ -100,26 +96,24 @@ public sealed class CosmicButtonEffect : MonoBehaviour,
         if (!interactable)
         {
             background.color = DisabledFill;
-            if (outline != null) outline.effectColor = NormalBorder * 0.45f;
+            if (frame != null) frame.color = NormalBorder * .45f;
             if (label != null) label.color = DisabledText;
             SetAccents(0.12f);
             transform.localScale = originalScale;
             return;
         }
 
-        background.color = Color.Lerp(Color.Lerp(NormalFill, HoverFill, glow), PressFill, pushed);
-        if (outline != null) outline.effectColor = Color.Lerp(NormalBorder, BrightBorder, glow);
+        Color restingFill = primaryAction ? Color.Lerp(NormalFill, HoverFill, .35f) : NormalFill;
+        background.color = Color.Lerp(Color.Lerp(restingFill, HoverFill, glow), PressFill, pushed);
+        if (frame != null) frame.color = Color.Lerp(primaryAction ? NormalBorder * 1.2f : NormalBorder, BrightBorder, glow);
         if (label != null) label.color = Color.Lerp(NormalText, BrightText, glow);
         SetAccents(0.20f + glow * 0.70f);
-        transform.localScale = originalScale * (1f + glow * 0.025f - pushed * 0.045f);
+        transform.localScale = originalScale * (1f + glow * .012f - pushed * .022f);
     }
 
     private void SetAccents(float alpha)
     {
-        Color accent = new Color(0.77f, 0.59f, 0.92f, alpha);
-        topRule.color = accent;
-        leftDiamond.color = accent;
-        rightDiamond.color = accent;
+        if (frame != null) { frame.emphasis = Mathf.Clamp01((alpha-.2f)/.7f); frame.SetVerticesDirty(); }
     }
 
     private RawImage CreateTopRule()

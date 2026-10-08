@@ -7,7 +7,7 @@ using UnityEngine.UI;
 [RequireComponent(typeof(CanvasRenderer))]
 public sealed class AstralMapGraphic : MaskableGraphic
 {
-    public enum Motif { Frame, Divider, NodeRing, Swords, Skull, Flame, Pouch, Eclipse, Question, Heart, Coin, Crescent, Chevron }
+    public enum Motif { Frame, Divider, NodeRing, Swords, Skull, Flame, Pouch, Eclipse, Question, Heart, Coin, Crescent, Chevron, ButtonFrame }
     public Motif motif;
     public float emphasis;
     public Color detailColor = new Color(0.012f, 0.008f, 0.026f, 1f);
@@ -22,6 +22,7 @@ public sealed class AstralMapGraphic : MaskableGraphic
         switch (motif)
         {
             case Motif.Frame: Frame(); break;
+            case Motif.ButtonFrame: ButtonFrame(); break;
             case Motif.Divider: Divider(); break;
             case Motif.NodeRing: NodeRing(); break;
             case Motif.Swords: Swords(); break;
@@ -255,7 +256,6 @@ public sealed class AstralMapGraphic : MaskableGraphic
         }
         if(r.height>170)
         {
-            Ring(Vector2.zero,r.width*.43f,r.height*.46f,.7f,Fade(color,.17f));
             Diamond(new Vector2(0,t),8,color);
             Line(new Vector2(0,t-36),new Vector2(0,t+12),.8f,Fade(color,.65f));
             Vector2 emblem=new Vector2(0,b+1);
@@ -263,6 +263,22 @@ public sealed class AstralMapGraphic : MaskableGraphic
             Crescent(emblem,16);
             Line(emblem+Vector2.down*40,emblem+Vector2.down*21,.8f,color);
             Diamond(emblem+Vector2.down*34,4,color);
+        }
+    }
+
+    private void ButtonFrame()
+    {
+        Rect r = rectTransform.rect;
+        float l=r.xMin+1.5f, rr=r.xMax-1.5f, b=r.yMin+1.5f, t=r.yMax-1.5f;
+        const float cut=7f;
+        Vector2[] p={new Vector2(l+cut,b),new Vector2(rr-cut,b),new Vector2(rr,b+cut),new Vector2(rr,t-cut),new Vector2(rr-cut,t),new Vector2(l+cut,t),new Vector2(l,t-cut),new Vector2(l,b+cut)};
+        for(int i=0;i<p.Length;i++) Line(p[i],p[(i+1)%p.Length],1.1f,color);
+        Line(new Vector2(l+17,t-5),new Vector2(rr-17,t-5),.65f,Fade(color,.24f+emphasis*.35f));
+        if (emphasis>.03f)
+        {
+            Color glow=Fade(color,emphasis*.55f);
+            Line(new Vector2(l+2,b+12),new Vector2(l+2,t-12),2f,glow);
+            Line(new Vector2(rr-2,b+12),new Vector2(rr-2,t-12),2f,glow);
         }
     }
 }

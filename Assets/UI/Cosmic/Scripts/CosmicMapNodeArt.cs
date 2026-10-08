@@ -75,10 +75,10 @@ public sealed class CosmicMapNodeArt : MonoBehaviour, IPointerEnterHandler,
             1f - Mathf.Exp(-12f * Time.unscaledDeltaTime));
         float pulse = IsCurrent ? .07f * Mathf.Sin(Time.unscaledTime * 1.8f) : 0f;
         ring.emphasis = IsCurrent ? .90f + pulse : IsAvailable ? .25f + hover * .65f : 0f;
-        ring.color = IsCurrent ? new Color(.78f, .48f, 1f)
-            : IsAvailable ? Color.Lerp(new Color(.46f, .24f, .62f), new Color(.78f, .55f, .92f), hover)
+        ring.color = IsCurrent ? CosmicUITheme.Accent
+            : IsAvailable ? Color.Lerp(CosmicUITheme.Border, CosmicUITheme.Accent, hover)
             : new Color(.35f, .21f, .46f, .88f);
-        icon.color = IsCurrent || IsAvailable ? new Color(.88f, .74f, .63f)
+        icon.color = IsCurrent || IsAvailable ? CosmicUITheme.Ivory
             : new Color(.62f, .52f, .56f, .88f);
         if (Node.IsVisited && !IsCurrent) icon.color = new Color(.46f, .35f, .31f, .74f);
         icon.emphasis = ring.emphasis;

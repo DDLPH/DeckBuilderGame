@@ -2,5 +2,6 @@ public enum RunState
 {
     NotStarted,
     Playing,
-    Completed
+    Completed,
+    Failed
 }

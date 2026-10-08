@@ -33,6 +33,7 @@ public sealed class MapHudUI : MonoBehaviour
         Button back = transform.Find("BackButton")?.GetComponent<Button>();
         if (back != null) back.onClick.AddListener(BackToMenu);
         lastStatus = null;
+        Refresh();
         RefreshStatus();
     }
 
@@ -163,7 +164,7 @@ public sealed class MapHudUI : MonoBehaviour
 
         if (floorValue != null)
             floorValue.text = run == null || run.CurrentNode == null
-                ? "--" : Mathf.Min(6, run.CurrentNode.LayerIndex + 1).ToString();
+                ? "--" : Mathf.Max(1, run.CurrentNode.LayerIndex).ToString();
         if (hpValue != null)
             hpValue.text = run == null ? "-- / --" :
                 $"{run.Player.CurrentHP} / {run.Player.MaxHP}";

@@ -49,7 +49,7 @@ public sealed class CosmicMenuAmbience : MonoBehaviour
         stars = new RawImage[StarPositions.Length];
         for (int i = 0; i < stars.Length; i++)
         {
-            float size = 10f + (i % 4) * 3f;
+            float size = 4f + (i % 4) * 1.2f;
             stars[i] = CreateImage(layerRect, "TwinklingStar" + (i + 1), starTexture,
                 StarPositions[i], new Vector2(size, size));
         }
@@ -60,13 +60,13 @@ public sealed class CosmicMenuAmbience : MonoBehaviour
         if (halo == null) return;
 
         float time = Time.unscaledTime;
-        float breath = 0.5f + 0.5f * Mathf.Sin(time * 1.15f);
-        halo.color = new Color(0.65f, 0.38f, 0.95f, Mathf.Lerp(0.07f, 0.19f, breath));
+        float breath = 0.5f + 0.5f * Mathf.Sin(time * .65f);
+        halo.color = new Color(0.65f, 0.38f, 0.95f, Mathf.Lerp(.045f, .11f, breath));
 
         for (int i = 0; i < stars.Length; i++)
         {
-            float twinkle = 0.5f + 0.5f * Mathf.Sin(time * (1.1f + i * 0.17f) + i * 1.7f);
-            stars[i].color = new Color(0.88f, 0.80f, 1f, Mathf.Lerp(0.16f, 0.78f, twinkle));
+            float twinkle = 0.5f + 0.5f * Mathf.Sin(time * (.45f + i * .035f) + i * 1.7f);
+            stars[i].color = new Color(0.88f, 0.80f, 1f, Mathf.Lerp(.08f, .40f, twinkle));
         }
     }
 
