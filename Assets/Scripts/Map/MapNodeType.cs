@@ -4,5 +4,6 @@ public enum MapNodeType
     Elite,
     Rest,
     Shop,
-    Boss
+    Boss,
+    Event
 }

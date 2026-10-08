@@ -31,18 +31,22 @@ public class MapGenerator : MonoBehaviour
     private const int EliteWeight = 15;
     private const int RestWeight = 10;
     private const int ShopWeight = 15;
+    // One Event is placed deliberately on floor 3; the other slots retain
+    // the original odds so existing elite/rest/shop guarantees still work.
 
 
     //// Node Type Requirements ////
 
-    private const int MinEliteCount = 2;
-    private const int MaxEliteCount = 4;
+    private const int MinEliteCount = 1;
+    private const int MaxEliteCount = 5;
 
-    private const int MinShopCount = 2;
-    private const int MaxShopCount = 3;
+    private const int MinShopCount = 1;
+    private const int MaxShopCount = 5;
 
-    private const int MinRestCount = 2;
-    private const int MaxRestCount = 3;
+    private const int MinRestCount = 1;
+    private const int MaxRestCount = 5;
+    private const int MinEventCount = 1;
+    private const int MaxEventCount = 1;
 
 
     //// Map Data ////
@@ -236,9 +240,9 @@ public class MapGenerator : MonoBehaviour
         )
         {
             MapNodeType nodeType =
-                GetRandomNodeType(
-                    layerIndex
-                );
+                layerIndex == 3 && i == 0
+                    ? MapNodeType.Event
+                    : GetRandomNodeType(layerIndex);
 
             MapNode node =
                 new MapNode(
@@ -2128,6 +2132,7 @@ public class MapGenerator : MonoBehaviour
         int eliteCount = 0;
         int shopCount = 0;
         int restCount = 0;
+        int eventCount = 0;
 
         foreach (
             MapNode node
@@ -2153,6 +2158,12 @@ public class MapGenerator : MonoBehaviour
                 case MapNodeType.Rest:
 
                     restCount++;
+
+                    break;
+
+                case MapNodeType.Event:
+
+                    eventCount++;
 
                     break;
             }
@@ -2181,6 +2192,11 @@ public class MapGenerator : MonoBehaviour
             restCount < MinRestCount ||
             restCount > MaxRestCount
         )
+        {
+            return false;
+        }
+
+        if (eventCount < MinEventCount || eventCount > MaxEventCount)
         {
             return false;
         }

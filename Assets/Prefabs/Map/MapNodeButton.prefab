@@ -136,6 +136,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MapNodeView
   nodeButton: {fileID: 1376721199152802770}
   nodeText: {fileID: 372683703751059275}
+  englishFont: {fileID: 11400000, guid: f3d1af487b409ef4fb6255acd004062e, type: 2}
+  thaiFont: {fileID: 11400000, guid: a010065776efb054898ce42f9fd30507, type: 2}
 --- !u!1 &6793233138852255661
 GameObject:
   m_ObjectHideFlags: 0

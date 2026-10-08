@@ -14,8 +14,14 @@ public class RunManager : MonoBehaviour
     [Header("Starter Deck")]
     [SerializeField] private CardData strikeCard;
     [SerializeField] private CardData defendCard;
+    [SerializeField] private CardData[] saveableCards;
 
     private static RunManager instance;
+    private static bool continueRequested;
+    private bool eventPending;
+
+    public static void RequestContinue() { continueRequested = true; }
+    public static void RequestNewRun() { continueRequested = false; }
 
     private void Awake()
     {
@@ -54,13 +60,31 @@ public class RunManager : MonoBehaviour
             return;
         }
     
+        bool loadSave = continueRequested;
+        continueRequested = false;
+        if (loadSave && TryRestoreRun())
+        {
+            mapUIManager.SetRunManager(this);
+            mapUIManager.RefreshMapUI();
+            if (eventPending) MapEventOverlay.Show(this);
+            return;
+        }
+
+        if (loadSave)
+        {
+            Debug.LogError("Continue failed. Existing save was kept; no new run was started.");
+            SceneManager.LoadScene("MainMenu");
+            Destroy(gameObject);
+            return;
+        }
+
         mapGenerator.GenerateMap();
-    
         StartNewRun();
     }
 
     public void StartNewRun()
     {
+        eventPending = false;
         CurrentRun = new RunData();
 
         Debug.Log(
@@ -101,6 +125,7 @@ public class RunManager : MonoBehaviour
         mapManager.SetStartNode(mapGenerator.CurrentMap.StartNode);
 
         CurrentRun.StartRun();
+        SaveCheckpoint();
 
         /*
         Debug.Log("Run Active : " + IsRunActive());
@@ -210,6 +235,8 @@ public class RunManager : MonoBehaviour
             return;
         }
 
+        if (eventPending) return;
+
         if (!CanMoveToNode(node))
         {
             Debug.LogWarning("Cannot move to this node");
@@ -253,6 +280,10 @@ public class RunManager : MonoBehaviour
         Debug.Log("RunManager Moved To Node");
         Debug.Log("Current Node Type : " + CurrentRun.CurrentNode.NodeType);
 
+        // Battle, shop, and rest are saved only after returning to the map.
+        // Quitting mid-encounter therefore restores the previous safe node.
+        eventPending = node.NodeType == MapNodeType.Event;
+        if (eventPending) SaveCheckpoint();
         HandleNodeSceneTransition();
     }
 
@@ -362,6 +393,10 @@ public class RunManager : MonoBehaviour
                 SceneManager.LoadScene("ShopScene");
                 break;
 
+            case MapNodeType.Event:
+                MapEventOverlay.Show(this);
+                break;
+
             default:
                 Debug.LogWarning(
                     "No Scene assigned for Node Type: "
@@ -454,6 +489,7 @@ public class RunManager : MonoBehaviour
         }
     
         CurrentRun.CompleteRun();
+        RunSaveSystem.Delete();
     
         Debug.Log("Run Completed");
     
@@ -565,6 +601,8 @@ public class RunManager : MonoBehaviour
         );
 
         mapUIManager.RefreshMapUI();
+        SaveCheckpoint();
+        if (eventPending) MapEventOverlay.Show(this);
     }
 
     public void GoToReward()
@@ -598,6 +636,96 @@ public class RunManager : MonoBehaviour
         Debug.Log("Returning To MapScene");
 
         SceneManager.LoadScene("MapScene");
+    }
+
+    public void ResolveEvent(bool chooseGold)
+    {
+        if (!eventPending || !IsRunActive()) return;
+        if (chooseGold) CurrentRun.AddGold(25);
+        else CurrentRun.Player.Heal(12);
+        eventPending = false;
+        SaveCheckpoint();
+        if (mapUIManager != null) mapUIManager.RefreshMapUI();
+    }
+
+    public void SaveAndReturnToMenu()
+    {
+        if (eventPending) return;
+        if (!SaveCheckpoint())
+        {
+            Debug.LogError("Could not return to menu because the run did not save.");
+            return;
+        }
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        instance = null;
+        Destroy(gameObject);
+        SceneManager.LoadScene("MainMenu");
+    }
+
+    public bool SaveCheckpoint()
+    {
+        return IsRunActive() && RunSaveSystem.TryWrite(CurrentRun, eventPending);
+    }
+
+    private bool TryRestoreRun()
+    {
+        if (!RunSaveSystem.TryRead(out RunSaveSystem.SaveData save)) return false;
+
+        List<CardData> cards = new List<CardData>();
+        foreach (string cardName in save.cards)
+        {
+            CardData card = FindSavedCard(cardName);
+            if (card == null)
+            {
+                Debug.LogError("Card missing from save catalogue: " + cardName);
+                return false;
+            }
+            cards.Add(card);
+        }
+
+        MapData map = new MapData();
+        List<MapNode> nodes = new List<MapNode>();
+        foreach (RunSaveSystem.NodeSave stored in save.nodes)
+        {
+            MapNode node = new MapNode((MapNodeType)stored.type, stored.layer);
+            if (stored.visited) node.MarkVisited();
+            map.AddNode(node);
+            nodes.Add(node);
+        }
+        for (int i = 0; i < nodes.Count; i++)
+            foreach (int next in save.nodes[i].connections)
+                nodes[i].AddConnection(nodes[next]);
+        map.SetStartNode(nodes[save.startNode]);
+
+        RunData restored = new RunData();
+        restored.SetMap(map);
+        restored.SetCurrentNode(nodes[save.currentNode]);
+        restored.Player.SetMaxHP(save.maxHP);
+        restored.Player.SetCurrentHP(save.currentHP);
+        restored.AddGold(save.gold);
+        foreach (CardData card in cards) restored.Deck.AddCard(card);
+        restored.StartRun();
+
+        CurrentRun = restored;
+        eventPending = save.pendingEvent;
+        mapGenerator.SetCurrentMap(map);
+        mapManager.SetCurrentNode(restored.CurrentNode);
+        Debug.Log("Run restored from disk.");
+        return true;
+    }
+
+    private CardData FindSavedCard(string savedName)
+    {
+        if (strikeCard != null && strikeCard.name == savedName) return strikeCard;
+        if (defendCard != null && defendCard.name == savedName) return defendCard;
+        if (strikeCard != null && strikeCard.UpgradedCard != null &&
+            strikeCard.UpgradedCard.name == savedName) return strikeCard.UpgradedCard;
+        if (defendCard != null && defendCard.UpgradedCard != null &&
+            defendCard.UpgradedCard.name == savedName) return defendCard.UpgradedCard;
+        if (saveableCards != null)
+            foreach (CardData card in saveableCards)
+                if (card != null && card.name == savedName) return card;
+        return null;
     }
 
 }

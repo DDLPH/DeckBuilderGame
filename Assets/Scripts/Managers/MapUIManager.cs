@@ -16,17 +16,18 @@ public class MapUIManager : MonoBehaviour
     [SerializeField] private GameObject mapConnectionPrefab;
 
     [SerializeField] private ScrollRect mapScrollRect;
+    [SerializeField] private bool showWholeMap = true;
 
 
     //// Map Layout Settings ////
 
-    private const float LayerVerticalSpacing = 260f;
+    private const float LayerVerticalSpacing = 124f;
 
-    private const float NodeHorizontalSpacing = 230f;
+    private const float NodeHorizontalSpacing = 280f;
 
-    private const float RandomHorizontalOffset = 65f;
+    private const float RandomHorizontalOffset = 30f;
 
-    private const float StartY = 120f;
+    private const float StartY = 174f;
 
     private const float BottomPadding = 120f;
 
@@ -82,13 +83,7 @@ public class MapUIManager : MonoBehaviour
             return;
         }
 
-        //// Configure Scroll View ////
-
-        if (mapScrollRect != null)
-        {
-            mapScrollRect.vertical = true;
-            mapScrollRect.horizontal = false;
-        }
+        EnsureScrollView();
 
         Debug.Log(
             "MapUIManager Ready"
@@ -172,6 +167,8 @@ public class MapUIManager : MonoBehaviour
             return;
         }
 
+        EnsureScrollView();
+
         ClearMapUI();
 
         IReadOnlyList<MapNode> allNodes =
@@ -214,7 +211,7 @@ public class MapUIManager : MonoBehaviour
         //// Layer 0 Start Is Intentionally Hidden ////
 
         for (
-            int layerIndex = 1;
+            int layerIndex = 0;
             layerIndex <= highestLayerIndex;
             layerIndex++
         )
@@ -254,6 +251,8 @@ public class MapUIManager : MonoBehaviour
         CreateMapConnections(
             allNodes
         );
+
+        ScrollToAvailableNodes();
 
 
         //// Finish ////
@@ -309,6 +308,15 @@ public class MapUIManager : MonoBehaviour
             );
 
             return;
+        }
+
+        // Nodes are positioned by this class, not by the prefab's layout group.
+        HorizontalLayoutGroup layerLayout =
+            layerObject.GetComponent<HorizontalLayoutGroup>();
+
+        if (layerLayout != null)
+        {
+            layerLayout.enabled = false;
         }
 
 
@@ -430,11 +438,8 @@ public class MapUIManager : MonoBehaviour
                 nodeCount
             );
 
-        float randomOffset =
-            Random.Range(
-                -RandomHorizontalOffset,
-                RandomHorizontalOffset
-            );
+        // A restored map retains the same visual route instead of jumping.
+        float randomOffset = Mathf.Sin(layerIndex * 1.7f + nodeIndex * 2.4f) * 16f;
 
         if (nodeCount <= 1)
         {
@@ -480,6 +485,9 @@ public class MapUIManager : MonoBehaviour
                 x,
                 0f
             );
+
+        float diameter = node.NodeType == MapNodeType.Boss ? 178f : layerIndex == 0 ? 124f : 102f;
+        nodeRect.sizeDelta = new Vector2(diameter, diameter);
 
 
         //// Setup Node ////
@@ -529,6 +537,11 @@ public class MapUIManager : MonoBehaviour
             return;
         }
 
+        containerRect.anchorMin = new Vector2(0.5f, 0f);
+        containerRect.anchorMax = new Vector2(0.5f, 0f);
+        containerRect.pivot = new Vector2(0.5f, 0f);
+        containerRect.anchoredPosition = Vector2.zero;
+
 
         //// Calculate Height ////
 
@@ -554,6 +567,14 @@ public class MapUIManager : MonoBehaviour
                 width,
                 totalHeight
             );
+
+        if (showWholeMap)
+        {
+            containerRect.anchorMin = containerRect.anchorMax = new Vector2(0.5f, 0.5f);
+            containerRect.pivot = new Vector2(0.5f, 0.5f);
+            containerRect.anchoredPosition = new Vector2(0f, -30f);
+            containerRect.sizeDelta = new Vector2(1200f, 860f);
+        }
 
 
         //// Resize Connection Layer ////
@@ -614,6 +635,127 @@ public class MapUIManager : MonoBehaviour
 
             nodeView.RefreshInteractable();
         }
+
+        ScrollToAvailableNodes();
+    }
+
+
+    //// Create a viewport around the existing map content at runtime. ////
+
+    private void EnsureScrollView()
+    {
+        RectTransform content = mapNodeContainer as RectTransform;
+
+        if (content == null)
+        {
+            return;
+        }
+
+        VerticalLayoutGroup contentLayout =
+            content.GetComponent<VerticalLayoutGroup>();
+
+        if (contentLayout != null)
+        {
+            contentLayout.enabled = false;
+        }
+
+        if (showWholeMap)
+        {
+            if (mapScrollRect != null) mapScrollRect.enabled = false;
+            return;
+        }
+
+        if (mapScrollRect == null)
+        {
+            Transform parent = content.parent;
+            int siblingIndex = content.GetSiblingIndex();
+
+            GameObject viewport = new GameObject(
+                "MapViewport",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image),
+                typeof(RectMask2D),
+                typeof(ScrollRect)
+            );
+
+            RectTransform viewportRect =
+                viewport.GetComponent<RectTransform>();
+
+            viewportRect.SetParent(parent, false);
+            viewportRect.SetSiblingIndex(siblingIndex);
+            viewportRect.anchorMin = Vector2.zero;
+            viewportRect.anchorMax = Vector2.one;
+            // Leave room for the scene's header and legend/footer.
+            viewportRect.offsetMin = new Vector2(300f, 100f);
+            viewportRect.offsetMax = new Vector2(-300f, -125f);
+
+            Image viewportImage = viewport.GetComponent<Image>();
+            viewportImage.color = new Color(0f, 0f, 0f, 0f);
+            viewportImage.raycastTarget = true;
+
+            content.SetParent(viewportRect, false);
+
+            mapScrollRect = viewport.GetComponent<ScrollRect>();
+            mapScrollRect.viewport = viewportRect;
+            mapScrollRect.content = content;
+        }
+
+        mapScrollRect.horizontal = false;
+        mapScrollRect.vertical = true;
+        mapScrollRect.movementType = ScrollRect.MovementType.Clamped;
+        mapScrollRect.scrollSensitivity = 35f;
+    }
+
+
+    //// Keep the next reachable layer visible after returning to the map. ////
+
+    private void ScrollToAvailableNodes()
+    {
+        if (showWholeMap) return;
+        if (mapScrollRect == null || runManager == null)
+        {
+            return;
+        }
+
+        RectTransform content = mapScrollRect.content;
+        RectTransform viewport = mapScrollRect.viewport;
+
+        if (content == null || viewport == null)
+        {
+            return;
+        }
+
+        Canvas.ForceUpdateCanvases();
+
+        float scrollableHeight = Mathf.Max(
+            0f,
+            content.rect.height - viewport.rect.height
+        );
+
+        if (scrollableHeight <= 0f)
+        {
+            mapScrollRect.verticalNormalizedPosition = 0f;
+            return;
+        }
+
+        MapNode currentNode = runManager.GetCurrentNode();
+        int nextLayer = currentNode == null
+            ? 1
+            : currentNode.LayerIndex + 1;
+
+        float nextLayerY = StartY +
+            (Mathf.Max(1, nextLayer) - 1) * LayerVerticalSpacing;
+
+        float bottomOffset = Mathf.Clamp(
+            nextLayerY - viewport.rect.height * 0.45f,
+            0f,
+            scrollableHeight
+        );
+
+        mapScrollRect.StopMovement();
+        mapScrollRect.verticalNormalizedPosition =
+            bottomOffset / scrollableHeight;
     }
 
 
