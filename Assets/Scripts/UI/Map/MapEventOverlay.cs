@@ -1,157 +1,105 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-// A small, playable Event screen on top of the map. No separate scene is
-// needed, so the current procedural route remains visible in the background.
+// Event remains an overlay on the generated map, not a separate scene.
 public sealed class MapEventOverlay : MonoBehaviour
 {
     private RunManager runManager;
-    private TMP_Text title;
-    private TMP_Text description;
-    private TMP_Text goldLabel;
-    private TMP_Text healLabel;
+    private TMP_Text title, description, hint;
+    private Button gold, heal, proceed;
+    private bool chosen;
+    private GameObject oldSelection;
+    private readonly Dictionary<Selectable, bool> previous = new Dictionary<Selectable, bool>();
+    public Button GoldButton => gold;
+    public Button HealButton => heal;
+    public Button ContinueButton => proceed;
 
     public static void Show(RunManager manager)
     {
-        if (manager == null) return;
-        MapEventOverlay existing = FindAnyObjectByType<MapEventOverlay>();
-        if (existing != null) return;
-
-        GameObject canvas = GameObject.Find("MapCanvas");
-        if (canvas == null)
-        {
-            Debug.LogError("Event cannot open: MapCanvas is missing.");
-            return;
-        }
-
-        GameObject overlay = new GameObject(
-            "EventOverlay", typeof(RectTransform), typeof(CanvasRenderer),
-            typeof(Image), typeof(MapEventOverlay)
-        );
-        overlay.transform.SetParent(canvas.transform, false);
-        overlay.transform.SetAsLastSibling();
-        RectTransform rect = overlay.GetComponent<RectTransform>();
-        Stretch(rect);
-        overlay.GetComponent<Image>().color = CosmicUITheme.Scrim;
-        overlay.GetComponent<MapEventOverlay>().Build(manager);
+        if (manager == null || !manager.IsRunActive() || !manager.EventPending || FindAnyObjectByType<MapEventOverlay>() != null) return;
+        var canvas = GameObject.Find("MapCanvas")?.GetComponent<Canvas>();
+        if (canvas == null) { Debug.LogWarning("Event needs MapCanvas."); return; }
+        var root = BattleUIFactory.Image("EventOverlay", canvas.transform, Vector2.zero, Vector2.zero, CosmicUITheme.Scrim, true);
+        var rect = root.rectTransform; rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = rect.offsetMax = Vector2.zero;
+        var layer = root.gameObject.AddComponent<Canvas>(); layer.overrideSorting = true; layer.sortingOrder = canvas.sortingOrder + 150;
+        root.gameObject.AddComponent<GraphicRaycaster>();
+        root.gameObject.AddComponent<MapEventOverlay>().Build(manager);
     }
-
     private void Build(RunManager manager)
     {
         runManager = manager;
-        TMP_FontAsset font = GameObject.Find("MapTitle")?.GetComponent<TMP_Text>()?.font;
-
-        GameObject card = new GameObject(
-            "EventPanel", typeof(RectTransform), typeof(CanvasRenderer),
-            typeof(Image), typeof(Outline)
-        );
-        card.transform.SetParent(transform, false);
-        RectTransform panel = card.GetComponent<RectTransform>();
-        panel.anchorMin = panel.anchorMax = new Vector2(0.5f, 0.5f);
-        panel.sizeDelta = new Vector2(700f, 450f);
-        CosmicUITheme.StylePanel(panel);
-
-        title = AddText(panel, font, 43f, -66f, 620f, 62f);
-        description = AddText(panel, font, 27f, -164f, 620f, 105f);
-        goldLabel = AddButton(panel, font, -256f, true);
-        healLabel = AddButton(panel, font, -338f, false);
+        if (EventSystem.current != null) oldSelection = EventSystem.current.currentSelectedGameObject;
+        BlockBackground();
+        var font = FindAnyObjectByType<MapHudUI>()?.GetFont(CosmicLanguage.IsThai);
+        var panel = BattleUIFactory.Image("EventPanel", transform, new Vector2(1100, 680), Vector2.zero, CosmicUITheme.Panel);
+        CosmicUITheme.Frame(panel.transform, false);
+        var icon = BattleUIFactory.Rect("VoidEmblem", panel.transform, new Vector2(125, 125), new Vector2(0, 228)).gameObject.AddComponent<AstralMapGraphic>();
+        icon.motif = AstralMapGraphic.Motif.Eclipse; icon.color = CosmicUITheme.Accent; icon.raycastTarget = false;
+        title = BattleUIFactory.Text("Title", panel.transform, new Vector2(960, 70), new Vector2(0, 133), "", 40, font);
+        description = BattleUIFactory.Text("Story", panel.transform, new Vector2(930, 110), new Vector2(0, 37), "", 28, font);
+        gold = BattleUIFactory.Button("TakeGold", panel.transform, new Vector2(420, 90), new Vector2(-235, -104), "", font, () => Choose(true));
+        heal = BattleUIFactory.Button("Heal", panel.transform, new Vector2(420, 90), new Vector2(235, -104), "", font, () => Choose(false));
+        proceed = BattleUIFactory.Button("Continue", panel.transform, new Vector2(420, 75), new Vector2(0, -211), "", font, Close);
+        hint = BattleUIFactory.Text("Hint", panel.transform, new Vector2(950, 55), new Vector2(0, -222), "", 24, font);
         RefreshLanguage();
+        if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(gold.gameObject);
     }
-
-    private TMP_Text AddButton(RectTransform panel, TMP_FontAsset font, float y, bool gold)
+    private void BlockBackground()
     {
-        GameObject buttonObject = new GameObject(
-            gold ? "TakeGold" : "Heal", typeof(RectTransform),
-            typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(Outline)
-        );
-        buttonObject.transform.SetParent(panel, false);
-        RectTransform rect = buttonObject.GetComponent<RectTransform>();
-        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
-        rect.pivot = new Vector2(0.5f, 1f);
-        rect.anchoredPosition = new Vector2(0f, y);
-        rect.sizeDelta = new Vector2(560f, 66f);
-
-        Image image = buttonObject.GetComponent<Image>();
-        image.color = new Color(0.15f, 0.10f, 0.25f, 1f);
-        Outline outline = buttonObject.GetComponent<Outline>();
-        outline.effectColor = new Color(0.55f, 0.38f, 0.70f);
-        Button button = buttonObject.GetComponent<Button>();
-        ColorBlock colors = button.colors;
-        colors.highlightedColor = new Color(0.78f, 0.69f, 0.88f);
-        colors.pressedColor = new Color(0.54f, 0.44f, 0.68f);
-        button.colors = colors;
-        button.onClick.AddListener(() => Choose(gold));
-
-        TMP_Text label = AddText(rect, font, 25f, 0f, 540f, 58f);
-        RectTransform labelRect = label.rectTransform;
-        labelRect.anchorMin = labelRect.anchorMax = new Vector2(0.5f, 0.5f);
-        labelRect.pivot = new Vector2(0.5f, 0.5f);
-        labelRect.anchoredPosition = Vector2.zero;
-        CosmicUITheme.StyleButton(button);
-        buttonObject.AddComponent<CosmicButtonEffect>();
-        return label;
+        Canvas root = GetComponentInParent<Canvas>().rootCanvas;
+        foreach (Selectable item in root.GetComponentsInChildren<Selectable>(true))
+        {
+            if (item.transform.IsChildOf(transform)) continue;
+            if (!previous.ContainsKey(item)) previous[item] = item.interactable;
+            item.interactable = false;
+        }
     }
-
-    private static TMP_Text AddText(
-        RectTransform parent, TMP_FontAsset font, float size, float y, float width, float height)
-    {
-        GameObject item = new GameObject(
-            "Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI)
-        );
-        item.transform.SetParent(parent, false);
-        RectTransform rect = item.GetComponent<RectTransform>();
-        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
-        rect.pivot = new Vector2(0.5f, 1f);
-        rect.anchoredPosition = new Vector2(0f, y);
-        rect.sizeDelta = new Vector2(width, height);
-        TextMeshProUGUI text = item.GetComponent<TextMeshProUGUI>();
-        if (font != null) text.font = font;
-        text.fontSize = size;
-        text.color = CosmicUITheme.Ivory;
-        text.alignment = TextAlignmentOptions.Center;
-        text.enableAutoSizing = true;
-        text.fontSizeMin = 19f;
-        text.fontSizeMax = size;
-        text.raycastTarget = false;
-        return text;
-    }
-
-    private static void Stretch(RectTransform rect)
-    {
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.offsetMin = rect.offsetMax = Vector2.zero;
-    }
-
     private void OnEnable() { CosmicLanguage.Changed += RefreshLanguage; }
     private void OnDisable() { CosmicLanguage.Changed -= RefreshLanguage; }
-
+    private void OnDestroy()
+    {
+        foreach (var pair in previous) if (pair.Key != null) pair.Key.interactable = pair.Value;
+        if (EventSystem.current != null && oldSelection != null && oldSelection.activeInHierarchy) EventSystem.current.SetSelectedGameObject(oldSelection);
+    }
     private void RefreshLanguage()
     {
         if (title == null) return;
-        bool thai = CosmicLanguage.IsThai;
-        MapHudUI hud = FindAnyObjectByType<MapHudUI>();
-        TMP_FontAsset font = hud == null ? null : hud.GetFont(thai);
-        if (font != null)
-        {
-            title.font = font;
-            description.font = font;
-            goldLabel.font = font;
-            healLabel.font = font;
-        }
-        title.text = thai ? "เสียงเรียกจากความว่างเปล่า" : "A WHISPER IN THE VOID";
-        description.text = thai
-            ? "แท่นบูชาโบราณยื่นข้อเสนอให้คุณ เลือกรับได้หนึ่งอย่าง"
-            : "An ancient altar offers a single gift. Choose one.";
-        goldLabel.text = thai ? "รับทอง 25" : "TAKE 25 GOLD";
-        healLabel.text = thai ? "ฟื้นฟู 12 HP" : "RESTORE 12 HP";
+        bool th = CosmicLanguage.IsThai;
+        TMP_FontAsset font = FindAnyObjectByType<MapHudUI>()?.GetFont(th);
+        foreach (TMP_Text text in GetComponentsInChildren<TMP_Text>(true)) if (font != null) text.font = font;
+        title.text = th ? (chosen ? "ของขวัญจากความว่างเปล่า" : "เสียงเรียกจากความว่างเปล่า") : (chosen ? "A GIFT FROM THE VOID" : "A WHISPER IN THE VOID");
+        if (!chosen) description.text = th ? "แสงริบหรี่ปรากฏบนแท่นบูชาโบราณ\nรับเหรียญที่ถูกลืม หรือปล่อยให้แสงนั้นเยียวยาคุณ" : "A faint light stirs upon an ancient altar.\nTake its forgotten coins, or let the light mend your wounds.";
+        gold.GetComponentInChildren<TMP_Text>().text = th ? "รับทอง 25" : "TAKE 25 GOLD";
+        int amount = runManager == null ? 0 : Mathf.Min(12, runManager.CurrentRun.Player.MaxHP - runManager.CurrentRun.Player.CurrentHP);
+        heal.GetComponentInChildren<TMP_Text>().text = amount == 0 ? (th ? "พลังชีวิตเต็มแล้ว" : "HEALTH ALREADY FULL") : (th ? "ฟื้นฟู " : "RESTORE ") + amount + " HP";
+        heal.interactable = !chosen && amount > 0;
+        gold.interactable = !chosen;
+        gold.gameObject.SetActive(!chosen); heal.gameObject.SetActive(!chosen); hint.gameObject.SetActive(!chosen); proceed.gameObject.SetActive(chosen);
+        proceed.GetComponentInChildren<TMP_Text>().text = th ? "เดินทางต่อ" : "CONTINUE";
+        hint.text = th ? "เลือกรับได้หนึ่งอย่าง • บันทึกผลหลังเลือก" : "Choose one gift • Saved after choosing";
     }
-
-    private void Choose(bool gold)
+    private void Choose(bool chooseGold)
     {
-        if (runManager == null) return;
-        runManager.ResolveEvent(gold);
-        Destroy(gameObject);
+        if (chosen || runManager == null || !runManager.EventPending || !runManager.IsRunActive()) return;
+        if (!chooseGold && runManager.CurrentRun.Player.CurrentHP >= runManager.CurrentRun.Player.MaxHP) return;
+        chosen = true;
+        int before = runManager.CurrentRun.Player.CurrentHP;
+        runManager.ResolveEvent(chooseGold);
+        BlockBackground(); RefreshLanguage();
+        bool th = CosmicLanguage.IsThai;
+        description.text = chooseGold ? (th ? "ได้รับทอง 25 แล้ว\nเสียงกระซิบเงียบลง เส้นทางข้างหน้ารออยู่" : "25 gold received.\nThe whisper fades. Your path awaits.") :
+            (th ? "ฟื้นฟูพลังชีวิต " : "Restored ") + (runManager.CurrentRun.Player.CurrentHP - before) + " HP\n" + (th ? "ความอบอุ่นเลือนหาย แต่บาดแผลของคุณดีขึ้นแล้ว" : "The warmth fades, but your wounds have eased.");
+        if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(proceed.gameObject);
+    }
+    public void Close()
+    {
+        if (!chosen) return;
+        // Restore once now; deactivating the scrim must not leave the map locked for a frame.
+        foreach (var pair in previous) if (pair.Key != null) pair.Key.interactable = pair.Value;
+        previous.Clear(); gameObject.SetActive(false);
+        if (Application.isPlaying) Destroy(gameObject); else DestroyImmediate(gameObject);
     }
 }

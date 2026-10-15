@@ -153,6 +153,7 @@ public sealed class CosmicBattlePlayHarness : MonoBehaviour
         var finalEnemies = FindAnyObjectByType<EnemyManager>();
         var finalHand = (List<CardData>)typeof(DeckManager).GetField("hand", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(finalDeck);
         var targets = new List<EnemyData>(finalEnemies.Enemies);
+        finalBattle.Player.SetCurrentHP(37);
         foreach (EnemyData target in targets)
         {
             target.SetCurrentHP(1); finalHand.Clear(); finalHand.Add(strike); finalBattle.Player.ResetEnergy();
@@ -161,19 +162,116 @@ public sealed class CosmicBattlePlayHarness : MonoBehaviour
         yield return new WaitForSeconds(1);
         Require(SceneManager.GetActiveScene().name == "RewardScene", "Normal victory did not enter Reward.");
         var reward = FindAnyObjectByType<RewardManager>();
-        Require(reward != null && fixture.CurrentRun.Gold == 125, "Gold reward missing.");
-        reward.SelectCardReward(0);
+        Require(reward != null && fixture.CurrentRun.Gold == 125 && fixture.CurrentRun.Player.CurrentHP == 37, "Gold reward or post-battle health missing.");
+        var choices = new List<CardData>(reward.Offers);
+        SceneManager.LoadScene("RewardScene"); yield return new WaitForSeconds(1);
+        reward = FindAnyObjectByType<RewardManager>();
+        Require(fixture.CurrentRun.Gold == 125, "Reloading Reward paid gold twice.");
+        for (int i = 0; i < choices.Count; i++) Require(choices[i] == reward.Offers[i], "Reloading Reward rerolled the offers.");
+        var rewardUI = FindAnyObjectByType<CosmicRewardUI>();
+        Require(rewardUI != null && !rewardUI.ConfirmButton.interactable, "New Reward screen is missing or accepts an unselected card.");
+        rewardUI.Cards[0].Button.onClick.Invoke();
+        Require(fixture.CurrentRun.Deck.Count == 10 && rewardUI.ConfirmButton.interactable, "Reward preview mutated the deck.");
+        yield return new WaitForSecondsRealtime(.3f);
+        Capture(rewardUI.GetComponent<Canvas>(), "rewards-play-selected.png");
+        rewardUI.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay; rewardUI.GetComponent<Canvas>().worldCamera = null;
+        yield return null;
+        rewardUI.RequestSkip(); FindAnyObjectByType<CosmicModalDialog>().Close(false);
+        Require(fixture.CurrentRun.Deck.Count == 10 && rewardUI.SelectedIndex == 0, "Cancelling skip lost the selection or granted a card.");
+        rewardUI.ConfirmButton.onClick.Invoke();
         Require(fixture.CurrentRun.Deck.Count == 11, "Reward card was not added.");
         reward.SelectCardReward(0); // Double click must not grant a second reward.
         Require(fixture.CurrentRun.Deck.Count == 11, "Reward was granted twice.");
         reward.LeaveReward(); yield return WaitForScene("MapScene");
-        Require(RunSaveSystem.TryRead(out var saved) && saved.cards.Count == 11 && saved.gold == 125, "Return to Map failed to save the new reward.");
+        Require(RunSaveSystem.TryRead(out var saved) && saved.cards.Count == 11 && saved.gold == 125 && saved.currentHP == 37, "Return to Map failed to save the reward or health.");
         fixture.SaveAndReturnToMenu(); yield return WaitForScene("MainMenu");
         Require(FindAnyObjectByType<MainMenuManager>() != null, "Main menu missing after save.");
         FindAnyObjectByType<MainMenuManager>().ContinueGame(); yield return WaitForScene("MapScene");
         fixture = FindAnyObjectByType<RunManager>();
-        Require(fixture != null && fixture.IsRunActive() && fixture.CurrentRun.Deck.Count == 11 && fixture.CurrentRun.Gold == 125,
+        Require(fixture != null && fixture.IsRunActive() && fixture.CurrentRun.Deck.Count == 11 && fixture.CurrentRun.Gold == 125 && fixture.CurrentRun.Player.CurrentHP == 37,
             "Continue did not restore the rewarded checkpoint.");
+
+        Configure(MapNodeType.NormalBattle); fixture.CurrentRun.PrepareBattleReward(fixture.CurrentRun.CurrentNode);
+        CosmicSceneLoader.Load("RewardScene"); yield return WaitForScene("RewardScene");
+        rewardUI = FindAnyObjectByType<CosmicRewardUI>(); rewardUI.SkipButton.onClick.Invoke();
+        FindAnyObjectByType<CosmicModalDialog>().Close(true); yield return WaitForScene("MapScene");
+        Require(fixture.CurrentRun.Deck.Count == 10 && fixture.CurrentRun.Gold == 125 &&
+            RunSaveSystem.TryRead(out saved) && saved.cards.Count == 10 && saved.gold == 125, "Skip did not retain gold and save the unchanged deck.");
+        CosmicSceneLoader.Load("RewardScene"); yield return WaitForScene("RewardScene");
+        rewardUI = FindAnyObjectByType<CosmicRewardUI>();
+        Require(!rewardUI.SkipButton.gameObject.activeSelf && fixture.CurrentRun.Gold == 125, "Resolved reward reopened or paid again.");
+        rewardUI.ConfirmButton.onClick.Invoke(); yield return WaitForScene("MapScene");
+        Debug.Log("Reward PLAY checks passed: preview/confirmation, cancel/confirm skip, stable reload, once-only gold/card, Map checkpoint and Continue.");
+
+        Configure(MapNodeType.Shop); CosmicSceneLoader.Load("ShopScene"); yield return WaitForScene("ShopScene");
+        var camp = FindAnyObjectByType<CosmicCampUI>(); var shop = FindAnyObjectByType<ShopManager>();
+        Require(camp.Ready && camp.GetComponent<AudioSource>().isPlaying, "Shop UI/music did not start.");
+        camp.NextButton.onClick.Invoke(); Require(camp.Page == 1, "Shop paging did not work in Play."); camp.PreviousButton.onClick.Invoke();
+        yield return null; // New Graphic depths are registered on the next rendered frame.
+        ClickCampCard(camp.Cards[0].Button); FindAnyObjectByType<CosmicModalDialog>().Close(false);
+        Require(fixture.CurrentRun.Gold == 100 && fixture.CurrentRun.Deck.Count == 10, "Cancelling purchase changed resources.");
+        ClickCampCard(camp.Cards[0].Button); FindAnyObjectByType<CosmicModalDialog>().Close(true);
+        Require(fixture.CurrentRun.Gold == 55 && fixture.CurrentRun.Deck.Count == 11 && !shop.BuyCard(shop.Offers[0]), "Purchase missing or same-frame double purchase accepted.");
+        yield return null;
+        ClickCampCard(camp.Cards[1].Button); FindAnyObjectByType<CosmicModalDialog>().Close(true);
+        Require(fixture.CurrentRun.Gold == 10 && fixture.CurrentRun.Deck.Count == 12, "Second purchase failed.");
+        foreach (var card in camp.Cards) Require(!card.Button.interactable, "Unaffordable shop cards stayed enabled.");
+        yield return null; Capture(camp.GetComponent<Canvas>(), "shop-play.png"); yield return null;
+        camp.BackButton.onClick.Invoke(); yield return WaitForScene("MapScene");
+        Require(RunSaveSystem.TryRead(out saved) && saved.gold == 10 && saved.cards.Count == 12, "Shop purchases not checkpointed on Map.");
+        fixture.SaveAndReturnToMenu(); yield return WaitForScene("MainMenu"); FindAnyObjectByType<MainMenuManager>().ContinueGame(); yield return WaitForScene("MapScene"); fixture = FindAnyObjectByType<RunManager>();
+        Require(fixture.CurrentRun.Gold == 10 && fixture.CurrentRun.Deck.Count == 12, "Continue lost shop purchases.");
+
+        Configure(MapNodeType.Rest); fixture.CurrentRun.Player.SetCurrentHP(30); CosmicSceneLoader.Load("RestScene"); yield return WaitForScene("RestScene");
+        camp = FindAnyObjectByType<CosmicCampUI>(); var rest = FindAnyObjectByType<RestManager>();
+        camp.BackButton.onClick.Invoke(); FindAnyObjectByType<CosmicModalDialog>().Close(false);
+        Require(SceneManager.GetActiveScene().name == "RestScene" && !rest.ActionUsed, "Cancelling unused-rest exit changed state.");
+        camp.HealButton.onClick.Invoke(); FindAnyObjectByType<CosmicModalDialog>().Close(false);
+        Require(fixture.CurrentRun.Player.CurrentHP == 30 && !rest.ActionUsed, "Cancelled rest consumed action.");
+        camp.HealButton.onClick.Invoke(); FindAnyObjectByType<CosmicModalDialog>().Close(true);
+        Require(fixture.CurrentRun.Player.CurrentHP == 56 && rest.ActionUsed && !rest.TryUpgrade(0), "Rest exclusivity failed.");
+        CosmicSceneLoader.Load("RestScene"); yield return WaitForScene("RestScene");
+        camp = FindAnyObjectByType<CosmicCampUI>(); rest = FindAnyObjectByType<RestManager>();
+        Require(rest.ActionUsed && !camp.HealButton.interactable && !camp.UpgradeButton.interactable, "Reloading Rest enabled a second action.");
+        camp.BackButton.onClick.Invoke(); yield return WaitForScene("MapScene");
+        Require(RunSaveSystem.TryRead(out saved) && saved.currentHP == 56, "Rest HP not saved on Map.");
+
+        Configure(MapNodeType.Rest); CosmicSceneLoader.Load("RestScene"); yield return WaitForScene("RestScene");
+        camp = FindAnyObjectByType<CosmicCampUI>(); rest = FindAnyObjectByType<RestManager>();
+        Require(!camp.HealButton.interactable, "Full-health heal was enabled.");
+        camp.UpgradeButton.onClick.Invoke(); camp.NextButton.onClick.Invoke(); camp.NextButton.onClick.Invoke();
+        Require(camp.Page == 2 && camp.Cards.Count == 2, "Upgrade pagination failed in Play.");
+        camp.PreviousButton.onClick.Invoke(); camp.PreviousButton.onClick.Invoke();
+        yield return null;
+        ClickCampCard(camp.Cards[0].Button); FindAnyObjectByType<CosmicModalDialog>().Close(false);
+        Require(fixture.CurrentRun.Deck.GetCard(0) == strike && !rest.ActionUsed, "Cancelled upgrade mutated deck.");
+        ClickCampCard(camp.Cards[0].Button); FindAnyObjectByType<CosmicModalDialog>().Close(true);
+        Require(fixture.CurrentRun.Deck.GetCard(0) == strike.UpgradedCard && rest.ActionUsed && !rest.TryUpgrade(1), "Upgrade was not once-only.");
+        camp.BackButton.onClick.Invoke(); yield return WaitForScene("MapScene");
+        Require(RunSaveSystem.TryRead(out saved) && saved.cards[0] == strike.UpgradedCard.name, "Upgraded card not saved on Map.");
+        fixture.SaveAndReturnToMenu(); yield return WaitForScene("MainMenu"); FindAnyObjectByType<MainMenuManager>().ContinueGame(); yield return WaitForScene("MapScene"); fixture = FindAnyObjectByType<RunManager>();
+        Require(fixture.CurrentRun.Deck.GetCard(0) == strike.UpgradedCard, "Continue lost the upgraded card.");
+
+        Configure(MapNodeType.Event); fixture.CurrentRun.Player.SetCurrentHP(30);
+        typeof(RunManager).GetField("eventPending", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(fixture, true);
+        CosmicSceneLoader.Load("MapScene"); yield return WaitForScene("MapScene");
+        var eventUI = FindAnyObjectByType<MapEventOverlay>();
+        Require(eventUI != null && !GameObject.Find("BackButton").GetComponent<Button>().interactable, "Event did not block Map in Play.");
+        eventUI.HealButton.onClick.Invoke(); eventUI.GoldButton.onClick.Invoke();
+        Require(fixture.CurrentRun.Player.CurrentHP == 42 && fixture.CurrentRun.Gold == 100 && !fixture.EventPending, "Event choices applied more than once.");
+        Require(RunSaveSystem.TryRead(out saved) && saved.currentHP == 42 && !saved.pendingEvent, "Event result not saved.");
+        yield return null; Capture(GameObject.Find("MapCanvas").GetComponent<Canvas>(), "event-play-result.png"); yield return null;
+        eventUI.ContinueButton.onClick.Invoke(); yield return null;
+        Require(FindAnyObjectByType<MapEventOverlay>() == null && GameObject.Find("BackButton").GetComponent<Button>().interactable, "Event receipt left map input locked.");
+        fixture.SaveAndReturnToMenu(); yield return WaitForScene("MainMenu"); FindAnyObjectByType<MainMenuManager>().ContinueGame(); yield return WaitForScene("MapScene"); fixture = FindAnyObjectByType<RunManager>();
+        Require(fixture.CurrentRun.Player.CurrentHP == 42 && FindAnyObjectByType<MapEventOverlay>() == null, "Continue replayed completed Event.");
+
+        Configure(MapNodeType.Event); typeof(RunManager).GetField("eventPending", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(fixture, true);
+        CosmicSceneLoader.Load("MapScene"); yield return WaitForScene("MapScene"); eventUI = FindAnyObjectByType<MapEventOverlay>();
+        Require(!eventUI.HealButton.interactable, "Full-health Event heal enabled.");
+        eventUI.GoldButton.onClick.Invoke(); eventUI.GoldButton.onClick.Invoke(); Require(fixture.CurrentRun.Gold == 125, "Event gold granted twice.");
+        eventUI.ContinueButton.onClick.Invoke(); yield return null;
+        Debug.Log("Camp PLAY checks passed: actual pointer card clicks, music, shop cancel/confirm/insufficient gold and Continue, Rest heal/upgrade/reload/pagination and Continue, both Event choices once-only, receipt/map unlock and isolated saves.");
 
         foreach (bool won in new[] { true, false })
         {
@@ -224,6 +322,15 @@ public sealed class CosmicBattlePlayHarness : MonoBehaviour
         Require(missing != null, "Opening Battle directly did not explain the missing run.");
         missing.transform.Find("ConfirmationPanel/Confirm").GetComponent<Button>().onClick.Invoke();
         yield return WaitForScene("MainMenu");
+        CosmicSceneLoader.Load("RewardScene"); yield return WaitForScene("RewardScene");
+        missing = FindAnyObjectByType<CosmicModalDialog>(); Require(missing != null, "Opening Reward without a won battle was accepted.");
+        missing.transform.Find("ConfirmationPanel/Confirm").GetComponent<Button>().onClick.Invoke(); yield return WaitForScene("MainMenu");
+        foreach (string room in new[] { "ShopScene", "RestScene" })
+        {
+            CosmicSceneLoader.Load(room); yield return WaitForScene(room);
+            missing = FindAnyObjectByType<CosmicModalDialog>(); Require(missing != null, room + " accepted a missing run.");
+            missing.transform.Find("ConfirmationPanel/Confirm").GetComponent<Button>().onClick.Invoke(); yield return WaitForScene("MainMenu");
+        }
         var probe = BattleUIFactory.Button("AudioProbe", GameObject.Find("Canvas").transform, new Vector2(200, 60), Vector2.zero, "PROBE", GameObject.Find("StartButton").GetComponentInChildren<TMP_Text>().font, null);
         yield return null;
         int played = CosmicAudio.PlayedCount; probe.onClick.Invoke();
@@ -238,6 +345,15 @@ public sealed class CosmicBattlePlayHarness : MonoBehaviour
             Require(Time.realtimeSinceStartup < deadline, "Scene transition timed out: " + name); yield return null;
         }
         yield return new WaitForSecondsRealtime(.5f);
+    }
+
+    private static void ClickCampCard(Button button)
+    {
+        Canvas.ForceUpdateCanvases();
+        var pointer = new PointerEventData(EventSystem.current) { button = PointerEventData.InputButton.Left, position = RectTransformUtility.WorldToScreenPoint(null, button.transform.position) };
+        var hits = new List<RaycastResult>(); EventSystem.current.RaycastAll(pointer, hits);
+        Require(hits.Count > 0 && hits[0].gameObject.GetComponentInParent<Button>() == button, "Camp card is not the top pointer target: " + button.name + " hit " + (hits.Count > 0 ? hits[0].gameObject.name : "nothing") + " at " + pointer.position);
+        ExecuteEvents.Execute(button.gameObject, pointer, ExecuteEvents.pointerClickHandler);
     }
 
     private static void Capture(Canvas canvas, string name)
@@ -281,7 +397,7 @@ public sealed class CosmicBattlePlayHarness : MonoBehaviour
     }
     private IEnumerator Timeout()
     {
-        yield return new WaitForSecondsRealtime(120);
+        yield return new WaitForSecondsRealtime(180);
         Debug.LogError("Battle PLAY smoke test timed out."); EditorApplication.Exit(1);
     }
     private static void Require(bool value, string message) { if (!value) throw new InvalidOperationException(message); }

@@ -35,7 +35,7 @@ public sealed class CosmicButtonSoundBinder : MonoBehaviour
         foreach (Button button in FindObjectsByType<Button>(FindObjectsInactive.Include))
         {
             if (button.GetComponent<CosmicButtonEffect>() != null || button.GetComponent<CosmicPlainButtonSound>() != null ||
-                button.GetComponent<MapNodeView>() != null) continue;
+                button.GetComponent<MapNodeView>() != null || button.GetComponent<CosmicRewardCard>() != null) continue;
             bool legacy = false;
             for (Transform parent = button.transform; parent != null; parent = parent.parent)
                 if (parent.name.StartsWith("Legacy", System.StringComparison.Ordinal)) { legacy = true; break; }

@@ -22,6 +22,7 @@ public class RunManager : MonoBehaviour
     private static RunManager instance;
     private static bool continueRequested;
     private bool eventPending;
+    public bool EventPending => eventPending;
 
     public static void RequestContinue() { continueRequested = true; }
     public static void RequestNewRun() { continueRequested = false; }
@@ -641,6 +642,7 @@ public class RunManager : MonoBehaviour
 
     public void GoToReward()
     {
+        if (CosmicSceneLoader.IsLoading) return;
         if (!IsRunActive())
         {
             Debug.LogWarning(
@@ -650,6 +652,11 @@ public class RunManager : MonoBehaviour
             return;
         }
     
+        if (!CurrentRun.PrepareBattleReward(CurrentRun.CurrentNode))
+        {
+            Debug.LogWarning("No eligible, unclaimed battle reward is available.");
+            return;
+        }
         CosmicSceneLoader.Load("RewardScene");
     }
 

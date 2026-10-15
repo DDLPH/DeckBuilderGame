@@ -1,323 +1,119 @@
-using UnityEngine;
-using TMPro;
+using System;
 using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
 
+// Controls reward transactions; presentation lives in CosmicRewardUI.
 public class RewardManager : MonoBehaviour
 {
     [Header("Gold Reward")]
-    [SerializeField] private int goldReward = 20;
-
-    [Header("Reward UI")]
+    [SerializeField] private int goldReward = 25;
+    [Header("Legacy UI (preserved)")]
     [SerializeField] private TMP_Text goldRewardText;
-
     [Header("Card Reward")]
     [SerializeField] private CardData[] rewardCardPool;
-    [SerializeField] private int rewardCardCount = 3;
-
-    [Header("Card Reward UI")]
+    [SerializeField, Range(0, 3)] private int rewardCardCount = 3;
     [SerializeField] private GameObject rewardCardPrefab;
     [SerializeField] private Transform cardRewardContainer;
 
     private RunManager runManager;
-    private List<CardData> currentCardRewards;
-    private bool rewardSelected;
+    private bool ready, leaving;
+    private static readonly CardData[] Empty = new CardData[0];
+    public RunData Run => runManager == null ? null : runManager.CurrentRun;
+    public BattleRewardData Receipt => Run == null ? null : Run.PendingReward;
+    public IReadOnlyList<CardData> Offers => Receipt == null ? Empty : Receipt.Offers;
+    public bool Ready => ready && Run != null && runManager.IsRunActive() && Receipt != null && Receipt.Node == Run.CurrentNode;
+    public bool Resolved => Receipt != null && Receipt.Resolved;
+    public bool CanChoose => Ready && !Resolved && !leaving && !CosmicSceneLoader.IsLoading;
+    public event Action Changed;
 
     private void Start()
     {
-        rewardSelected = false;
-
-        FindRunManager();
-
-        if (runManager == null || !runManager.IsRunActive())
+        runManager = FindAnyObjectByType<RunManager>();
+        CosmicRewardUI view = FindAnyObjectByType<CosmicRewardUI>();
+        if (view != null) view.Bind(this);
+        if (runManager == null || !runManager.IsRunActive() || Receipt == null || Receipt.Node != Run.CurrentNode)
         {
-            return;
-        }
-
-        GiveGoldReward();
-        RefreshGoldRewardUI();
-        GenerateCardRewards();
-        BuildCardRewardUI();
-    }
-
-    private void FindRunManager()
-    {
-        runManager =
-            FindAnyObjectByType<RunManager>();
-
-        if (runManager == null)
-        {
-            Debug.LogError(
-                "RewardManager : RunManager not found"
-            );
-
-            return;
-        }
-
-        if (runManager.CurrentRun == null)
-        {
-            Debug.LogError(
-                "RewardManager : CurrentRun is null"
-            );
-
-            return;
-        }
-
-        Debug.Log("Reward Scene Started");
-    }
-
-    private void GiveGoldReward()
-    {
-        runManager.CurrentRun.AddGold(goldReward);
-
-        Debug.Log(
-            "Gold Reward : +" +
-            goldReward +
-            " | Current Gold : " +
-            runManager.CurrentRun.Gold
-        );
-    }
-
-    private void RefreshGoldRewardUI()
-    {
-        if (goldRewardText == null)
-        {
-            Debug.LogError(
-                "RewardManager : Gold Reward Text is null"
-            );
-
-            return;
-        }
-
-        goldRewardText.text =
-            "+" + goldReward + " Gold";
-    }
-
-    private void GenerateCardRewards()
-    {
-        if (rewardCardPool == null ||
-            rewardCardPool.Length == 0)
-        {
-            Debug.LogError(
-                "RewardManager : Reward Card Pool is empty"
-            );
-
-            return;
-        }
-
-        currentCardRewards =
-            new List<CardData>();
-
-        // A stale/null inspector reference must not crash the reward screen.
-        List<CardData> availableCards = new List<CardData>();
-        foreach (CardData candidate in rewardCardPool)
-            if (candidate != null && !availableCards.Contains(candidate)) availableCards.Add(candidate);
-
-        int rewardCount =
-            Mathf.Min(
-                rewardCardCount,
-                availableCards.Count
-            );
-
-        for (int i = 0; i < rewardCount; i++)
-        {
-            int randomIndex =
-                Random.Range(
-                    0,
-                    availableCards.Count
-                );
-
-            CardData selectedCard =
-                availableCards[randomIndex];
-
-            currentCardRewards.Add(selectedCard);
-
-            availableCards.RemoveAt(randomIndex);
-        }
-
-        Debug.Log(
-            "Card Rewards Generated : " +
-            currentCardRewards.Count
-        );
-
-        for (int i = 0; i < currentCardRewards.Count; i++)
-        {
-            Debug.Log(
-                "Reward Card " +
-                i +
-                " : " +
-                currentCardRewards[i].CardName
-            );
-        }
-    }
-
-    public void SelectCardReward(int index)
-    {
-        if (CosmicSceneLoader.IsLoading) return;
-        if (rewardSelected)
-        {
-            Debug.LogWarning(
-                "RewardManager : Reward already selected"
-            );
-
-            return;
-        }
-
-        if (currentCardRewards == null)
-        {
-            Debug.LogError(
-                "RewardManager : Card Rewards not generated"
-            );
-
-            return;
-        }
-
-        if (index < 0 ||
-            index >= currentCardRewards.Count)
-        {
-            Debug.LogError(
-                "RewardManager : Invalid Card Reward Index"
-            );
-
-            return;
-        }
-
-        CardData selectedCard =
-            currentCardRewards[index];
-
-        if (selectedCard == null)
-        {
-            Debug.LogError(
-                "RewardManager : Selected Card is null"
-            );
-
-            return;
-        }
-
-        if (runManager == null ||
-            runManager.CurrentRun == null ||
-            runManager.CurrentRun.Deck == null)
-        {
-            Debug.LogError(
-                "RewardManager : Player Deck is not available"
-            );
-
-            return;
-        }
-
-        runManager.CurrentRun.Deck.AddCard(
-            selectedCard
-        );
-
-        rewardSelected = true;
-
-        DisableAllRewardButtons();
-
-        Debug.Log(
-            "Card Reward Selected : " +
-            selectedCard.CardName
-        );
-
-        Debug.Log(
-            "Player Deck Count After Reward : " +
-            runManager.CurrentRun.Deck.Count
-        );
-    }
-
-    private void BuildCardRewardUI()
-    {
-        if (rewardCardPrefab == null)
-        {
-            Debug.LogError(
-                "RewardManager : Reward Card Prefab is null"
-            );
-
-            return;
-        }
-
-        if (cardRewardContainer == null)
-        {
-            Debug.LogError(
-                "RewardManager : Card Reward Container is null"
-            );
-
-            return;
-        }
-
-        if (currentCardRewards == null)
-        {
-            Debug.LogError(
-                "RewardManager : Current Card Rewards is null"
-            );
-
-            return;
-        }
-
-        for (int i = 0; i < currentCardRewards.Count; i++)
-        {
-            CardData card =
-                currentCardRewards[i];
-
-            GameObject rewardCardObject =
-                Instantiate(
-                    rewardCardPrefab,
-                    cardRewardContainer
-                );
-
-            RewardCardUI rewardCardUI =
-                rewardCardObject.GetComponent<RewardCardUI>();
-
-            if (rewardCardUI == null)
+            if (view != null) view.ShowUnavailable();
+            else
             {
-                Debug.LogError(
-                    "RewardManager : RewardCardUI not found"
-                );
-
-                continue;
+                Canvas canvas = FindAnyObjectByType<Canvas>();
+                if (canvas != null) CosmicModalDialog.Show(canvas, null, "NO BATTLE REWARD",
+                    "Win a normal or Elite battle from the map first.", "MAIN MENU", () => CosmicSceneLoader.Load("MainMenu"));
             }
-
-            rewardCardUI.Setup(
-                card,
-                i,
-                this
-            );
-        }
-
-        Debug.Log(
-            "Card Reward UI Built : " +
-            currentCardRewards.Count +
-            " cards"
-        );
-    }
-
-    private void DisableAllRewardButtons()
-    {
-        if (cardRewardContainer == null)
-        {
-            Debug.LogError(
-                "RewardManager : Card Reward Container is null"
-            );
-
             return;
         }
 
-        RewardCardUI[] rewardCards =
-            cardRewardContainer.GetComponentsInChildren<RewardCardUI>();
-
-        for (int i = 0; i < rewardCards.Length; i++)
+        if (!Receipt.Initialized)
         {
-            rewardCards[i].SetInteractable(false);
+            var available = new List<CardData>();
+            if (rewardCardPool != null) foreach (CardData card in rewardCardPool)
+                if (card != null && !available.Contains(card)) available.Add(card);
+            var choices = new List<CardData>();
+            int count = Mathf.Min(Mathf.Clamp(rewardCardCount, 0, 3), available.Count);
+            for (int i = 0; i < count; i++)
+            {
+                int index = UnityEngine.Random.Range(0, available.Count);
+                choices.Add(available[index]); available.RemoveAt(index);
+            }
+            Run.InitializeBattleReward(Mathf.Max(0, goldReward), choices);
         }
+        ready = Receipt.Initialized;
+        if (view != null) view.ShowRewards();
+        else BuildLegacyCards();
+        Refresh();
+    }
 
-        Debug.Log(
-            "RewardManager : All Reward Buttons Disabled"
-        );
+    private void Refresh()
+    {
+        if (goldRewardText != null && Receipt != null)
+            goldRewardText.text = "+" + Receipt.GoldGranted + (CosmicLanguage.IsThai ? " ทอง" : " GOLD");
+        Changed?.Invoke();
+    }
+
+    public bool TryTakeReward(int index)
+    {
+        if (!CanChoose || !Run.TakeBattleReward(index)) return false;
+        DisableLegacyCards(); Refresh();
+        Debug.Log("Reward claimed once: " + Offers[index].name);
+        return true;
+    }
+
+    // Kept for old prefab callbacks and the existing Battle smoke tests.
+    public void SelectCardReward(int index) { TryTakeReward(index); }
+
+    public void TakeAndReturnToMap(int index)
+    {
+        if (TryTakeReward(index)) LeaveReward();
+    }
+
+    public void SkipAndReturnToMap()
+    {
+        if (!CanChoose || !Run.SkipBattleReward()) return;
+        Refresh(); LeaveReward();
     }
 
     public void LeaveReward()
     {
-        if (runManager == null)
-            return;
-    
-        runManager.ReturnToMap();
+        if (!Ready || !Resolved || leaving || CosmicSceneLoader.IsLoading) return;
+        leaving = true; runManager.ReturnToMap();
+        if (!CosmicSceneLoader.IsLoading) leaving = false;
+    }
+
+    private void BuildLegacyCards()
+    {
+        if (rewardCardPrefab == null || cardRewardContainer == null) return;
+        for (int i = 0; i < Offers.Count; i++)
+        {
+            var item = Instantiate(rewardCardPrefab, cardRewardContainer);
+            var view = item.GetComponent<RewardCardUI>();
+            if (view != null) { view.Setup(Offers[i], i, this); view.SetInteractable(!Resolved); }
+        }
+    }
+    private void DisableLegacyCards()
+    {
+        if (cardRewardContainer == null) return;
+        foreach (RewardCardUI card in cardRewardContainer.GetComponentsInChildren<RewardCardUI>(true))
+            card.SetInteractable(false);
     }
 }

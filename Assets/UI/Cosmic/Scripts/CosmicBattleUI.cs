@@ -193,38 +193,8 @@ public sealed class CosmicBattleUI : MonoBehaviour
         actor.Build(this, data, sprite, en, th, boss); actors.Add(actor);
     }
 
-    public string CardName(CardData data)
-    {
-        if (!CosmicLanguage.IsThai) return data.CardName;
-        bool upgraded = data.UpgradedCard == null && data.name.Contains("+");
-        if (data.name.StartsWith("Strike")) return "ฟันโจมตี" + (upgraded ? "+" : "");
-        if (data.name.StartsWith("Defend")) return "ตั้งรับ" + (upgraded ? "+" : "");
-        switch (data.name)
-        {
-            case "AstralCut": return "คมดาบดารา";
-            case "MoonWard": return "ม่านจันทรา";
-            case "Starfall": return "ดาวถล่ม";
-            case "Eclipse": return "คมคราส";
-            case "Insight": return "หยั่งรู้";
-            case "Focus": return "รวมสมาธิ";
-        }
-        return data.CardName;
-    }
-    public string CardDescription(CardData data)
-    {
-        var lines = new List<string>();
-        if (data.Effects != null) foreach (CardEffect effect in data.Effects)
-        {
-            if (effect is DamageEffect damage) lines.Add(CosmicLanguage.IsThai ? "สร้างความเสียหาย " + damage.DamageAmount : "Deal " + damage.DamageAmount + " damage.");
-            else if (effect is BlockEffect block) lines.Add(CosmicLanguage.IsThai ? "ได้รับเกราะ " + block.BlockAmount : "Gain " + block.BlockAmount + " Block.");
-            else if (effect is DrawCardsEffect draw) lines.Add(CosmicLanguage.IsThai ? "จั่ว " + draw.Amount + " ใบ" : "Draw " + draw.Amount + " cards.");
-            else if (effect is GainEnergyEffect energy) lines.Add(CosmicLanguage.IsThai ? "ได้รับพลังงาน " + energy.Amount : "Gain " + energy.Amount + " Energy.");
-            else if (effect != null) return data.Description;
-        }
-        if (data.Exhausts) lines.Add(CosmicLanguage.IsThai ? "เผาทิ้งหลังใช้" : "Exhaust.");
-        if (BattleManager.TargetsEnemySide(data) && !BattleManager.NeedsEnemy(data)) lines.Add(CosmicLanguage.IsThai ? "ศัตรูทั้งหมด" : "All enemies.");
-        return lines.Count == 0 ? data.Description : string.Join("\n", lines);
-    }
+    public string CardName(CardData data) => CosmicCardText.Name(data);
+    public string CardDescription(CardData data) => CosmicCardText.Description(data);
 
     private void Update()
     {
