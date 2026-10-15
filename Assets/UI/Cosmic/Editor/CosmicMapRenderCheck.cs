@@ -8,6 +8,55 @@ using UnityEngine;
 
 public static class CosmicMapRenderCheck
 {
+    public static void CheckNewRunMap()
+    {
+        EditorSceneManager.OpenScene("Assets/Scenes/MainMenu.unity");
+        var start = GameObject.Find("StartButton").GetComponent<UnityEngine.UI.Button>();
+        bool wired = false;
+        for (int i = 0; i < start.onClick.GetPersistentEventCount(); i++)
+            wired |= start.onClick.GetPersistentTarget(i) is MainMenuManager &&
+                start.onClick.GetPersistentMethodName(i) == "StartGame";
+        if (!wired) throw new InvalidOperationException("New Run button is not wired to StartGame.");
+
+        EditorSceneManager.OpenScene("Assets/Scenes/MapScene.unity");
+        var generator = UnityEngine.Object.FindAnyObjectByType<MapGenerator>();
+        var manager = UnityEngine.Object.FindAnyObjectByType<RunManager>();
+        var navigation = UnityEngine.Object.FindAnyObjectByType<MapManager>();
+        var ui = UnityEngine.Object.FindAnyObjectByType<MapUIManager>();
+        ui.SetRunManager(manager);
+        ui.RefreshMapUI(); // A premature refresh must recover after data becomes available.
+        MapData previous = null;
+        for (int seed = 0; seed < 3; seed++)
+        {
+            UnityEngine.Random.InitState(seed);
+            generator.GenerateMap();
+            if (generator.CurrentMap == null || generator.CurrentMap == previous)
+                throw new InvalidOperationException("New graph was not generated.");
+            var run = new RunData();
+            run.SetMap(generator.CurrentMap);
+            run.SetCurrentNode(generator.CurrentMap.StartNode);
+            run.StartRun();
+            typeof(RunManager).GetProperty("CurrentRun").SetValue(manager, run);
+            navigation.SetCurrentNode(run.CurrentNode);
+            ui.RefreshMapUI();
+            ui.RefreshMapUI(); // Same graph: no duplicates or reroll.
+            if (ui.GetDisplayedNodeCount() != generator.CurrentMap.Nodes.Count)
+                throw new InvalidOperationException("Map UI missing nodes or retaining old nodes.");
+            foreach (var art in UnityEngine.Object.FindObjectsByType<CosmicMapNodeArt>())
+            {
+                bool belongs = false;
+                foreach (MapNode node in generator.CurrentMap.Nodes) belongs |= art.Node == node;
+                if (!belongs) throw new InvalidOperationException("Old map button remains active.");
+            }
+            ValidateNodeStates(manager, ui, run);
+            previous = generator.CurrentMap;
+        }
+        Debug.Log("New Run map checks passed: menu binding, early refresh recovery, 3 fresh graphs, no stale/duplicate nodes and valid navigation.");
+        // Tests use in-memory runs only; never overwrite the player's save.
+        CosmicAuditChecks.Run();
+        Render();
+    }
+
     public static void Render()
     {
         EditorSceneManager.OpenScene("Assets/Scenes/MapScene.unity");
@@ -38,7 +87,7 @@ public static class CosmicMapRenderCheck
         Canvas.ForceUpdateCanvases();
         MapHudUI hud=UnityEngine.Object.FindAnyObjectByType<MapHudUI>();
         Invoke(hud,"Start");Invoke(hud,"LateUpdate");Invoke(hud,"Refresh");
-        foreach(TMP_Text text in UnityEngine.Object.FindObjectsByType<TMP_Text>(FindObjectsSortMode.None))text.ForceMeshUpdate();
+        foreach(TMP_Text text in UnityEngine.Object.FindObjectsByType<TMP_Text>())text.ForceMeshUpdate();
         Canvas.ForceUpdateCanvases();camera.Render();
         RenderTexture.active=target;
         Texture2D image=new Texture2D(1920,1080,TextureFormat.RGBA32,false);
@@ -56,7 +105,7 @@ public static class CosmicMapRenderCheck
 
     private static void ValidateNodeStates(RunManager manager, MapUIManager ui, RunData run)
     {
-        CosmicMapNodeArt[] nodes = UnityEngine.Object.FindObjectsByType<CosmicMapNodeArt>(FindObjectsSortMode.None);
+        CosmicMapNodeArt[] nodes = UnityEngine.Object.FindObjectsByType<CosmicMapNodeArt>();
         MapNode next = null;
         foreach (CosmicMapNodeArt art in nodes)
         {
@@ -73,11 +122,11 @@ public static class CosmicMapRenderCheck
             if (art.IsAvailable != manager.CanMoveToNode(art.Node))
                 throw new InvalidOperationException("Map button state was not refreshed after movement.");
         }
-        foreach (MapConnectionUI route in UnityEngine.Object.FindObjectsByType<MapConnectionUI>(FindObjectsSortMode.None))
+        foreach (MapConnectionUI route in UnityEngine.Object.FindObjectsByType<MapConnectionUI>())
             Invoke(route, "Update");
         run.SetCurrentNode(start);
         ui.RefreshMapUI();
-        foreach (MapConnectionUI route in UnityEngine.Object.FindObjectsByType<MapConnectionUI>(FindObjectsSortMode.None))
+        foreach (MapConnectionUI route in UnityEngine.Object.FindObjectsByType<MapConnectionUI>())
             Invoke(route, "Update");
         Debug.Log("Map state checks passed: available paths and current-node refresh.");
     }

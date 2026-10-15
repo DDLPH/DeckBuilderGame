@@ -28,7 +28,7 @@ public class RewardManager : MonoBehaviour
 
         FindRunManager();
 
-        if (runManager == null)
+        if (runManager == null || !runManager.IsRunActive())
         {
             return;
         }
@@ -42,7 +42,7 @@ public class RewardManager : MonoBehaviour
     private void FindRunManager()
     {
         runManager =
-            FindFirstObjectByType<RunManager>();
+            FindAnyObjectByType<RunManager>();
 
         if (runManager == null)
         {
@@ -107,8 +107,10 @@ public class RewardManager : MonoBehaviour
         currentCardRewards =
             new List<CardData>();
 
-        List<CardData> availableCards =
-            new List<CardData>(rewardCardPool);
+        // A stale/null inspector reference must not crash the reward screen.
+        List<CardData> availableCards = new List<CardData>();
+        foreach (CardData candidate in rewardCardPool)
+            if (candidate != null && !availableCards.Contains(candidate)) availableCards.Add(candidate);
 
         int rewardCount =
             Mathf.Min(
@@ -150,6 +152,7 @@ public class RewardManager : MonoBehaviour
 
     public void SelectCardReward(int index)
     {
+        if (CosmicSceneLoader.IsLoading) return;
         if (rewardSelected)
         {
             Debug.LogWarning(

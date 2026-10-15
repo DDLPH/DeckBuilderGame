@@ -191,7 +191,8 @@ public class MapNodeView : MonoBehaviour, IPointerEnterHandler,
         if (astralArt != null) astralArt.RefreshArt();
     }
 
-    public void OnPointerEnter(PointerEventData eventData) { hovering = true; }
+    public void OnPointerEnter(PointerEventData eventData)
+    { hovering = true; if (nodeButton != null && nodeButton.IsInteractable()) CosmicAudio.Play(CosmicCue.Hover); }
     public void OnPointerExit(PointerEventData eventData)
     {
         hovering = false;
@@ -387,9 +388,11 @@ public class MapNodeView : MonoBehaviour, IPointerEnterHandler,
             return;
         }
     
+        if (CosmicSceneLoader.IsLoading || !runManager.CanMoveToNode(node)) return;
+        CosmicAudio.Play(CosmicCue.Click);
         runManager.MoveToNode(node);
     
-        MapUIManager mapUIManager = FindFirstObjectByType<MapUIManager>();
+        MapUIManager mapUIManager = FindAnyObjectByType<MapUIManager>();
     
         if (mapUIManager != null)
         {

@@ -126,7 +126,7 @@ public class BattleEncounterManager : MonoBehaviour
     private EncounterPool GetEncounterPool()
     {
         RunManager runManager =
-            FindFirstObjectByType<RunManager>();
+            FindAnyObjectByType<RunManager>();
 
         if (runManager == null)
         {

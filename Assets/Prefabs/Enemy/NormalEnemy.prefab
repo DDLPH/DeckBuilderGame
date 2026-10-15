@@ -362,7 +362,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5670661019634430732}
-  - component: {fileID: 8480119830896598024}
   m_Layer: 0
   m_Name: EnemyData
   m_TagString: Untagged
@@ -385,22 +384,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 4061268593375540320}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &8480119830896598024
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5767449664963943496}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 361e7d9ebced1c244a4420b0b278a535, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyData
-  maxHP: 80
-  currentHP: 80
-  block: 0
-  actionPattern: {fileID: 0}
 --- !u!1 &5958118001649340431
 GameObject:
   m_ObjectHideFlags: 0
@@ -931,7 +914,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 361e7d9ebced1c244a4420b0b278a535, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
-  maxHP: 40
-  currentHP: 40
+  maxHP: 22
+  currentHP: 22
   block: 0
-  actionPattern: {fileID: 11400000, guid: 43093728bb9c5044ebb78f94ed9e59e3, type: 2}
+  actionPattern: {fileID: 11400000, guid: 53dfad8509a3f774f8b68c8ac155ee4d, type: 2}

@@ -17,7 +17,7 @@ public class DeckManager : MonoBehaviour
     {
         ClearBattleDeck();
 
-        RunManager runManager = FindFirstObjectByType<RunManager>();
+        RunManager runManager = FindAnyObjectByType<RunManager>();
 
         if (runManager == null)
         {
@@ -191,7 +191,8 @@ public class DeckManager : MonoBehaviour
         if (!hand.Contains(card))
             return;
 
-        DiscardCard(card);
+        if (card.Exhausts) { hand.Remove(card); exhaustPile.Add(card); }
+        else DiscardCard(card);
 
         Debug.Log("Card Played: " + card.CardName);
         Debug.Log("Hand Count: " + hand.Count);
@@ -225,4 +226,8 @@ public class DeckManager : MonoBehaviour
 
 
     public IReadOnlyList<CardData> Hand => hand;
+    public void DrawExtraCards(int amount) { if (amount > 0) DrawCards(Mathf.Min(amount, 10)); }
+    public IReadOnlyList<CardData> DrawPile => drawPile;
+    public IReadOnlyList<CardData> DiscardPile => discardPile;
+    public IReadOnlyList<CardData> ExhaustPile => exhaustPile;
 }

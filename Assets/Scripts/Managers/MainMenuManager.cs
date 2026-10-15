@@ -23,7 +23,7 @@ public class MainMenuManager : MonoBehaviour
 
     public void StartGame()
     {
-        if (loading || confirmation != null) return;
+        if (loading || confirmation != null || CosmicSceneLoader.IsLoading) return;
         if (RunSaveSystem.HasSave)
         {
             bool thai = CosmicLanguage.IsThai;
@@ -59,6 +59,6 @@ public class MainMenuManager : MonoBehaviour
     private IEnumerator LoadMapAfterClick()
     {
         yield return new WaitForSecondsRealtime(0.22f);
-        SceneManager.LoadScene("MapScene");
+        if (!CosmicSceneLoader.Load("MapScene")) loading = false;
     }
 }

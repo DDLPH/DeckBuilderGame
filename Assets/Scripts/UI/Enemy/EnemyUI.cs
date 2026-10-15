@@ -54,7 +54,7 @@ public class EnemyUI : MonoBehaviour
     private void Start()
     {
         battleTargetManager =
-            FindFirstObjectByType<BattleTargetManager>();
+            FindAnyObjectByType<BattleTargetManager>();
 
         if (battleTargetManager == null)
         {

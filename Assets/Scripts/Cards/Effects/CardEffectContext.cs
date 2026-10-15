@@ -7,14 +7,17 @@ public class CardEffectContext
     public IReadOnlyList<EnemyData> Enemies { get; }
 
     public EnemyData SelectedEnemy { get; }
+    public DeckManager Deck { get; }
 
     public CardEffectContext(
         PlayerData player,
         IReadOnlyList<EnemyData> enemies,
-        EnemyData selectedEnemy)
+        EnemyData selectedEnemy,
+        DeckManager deck = null)
     {
         Player = player;
         Enemies = enemies;
         SelectedEnemy = selectedEnemy;
+        Deck = deck;
     }
 }

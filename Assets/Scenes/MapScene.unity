@@ -10088,10 +10088,16 @@ MonoBehaviour:
   strikeCard: {fileID: 11400000, guid: 123cc5bdd2b51814a84e20e1dabffc86, type: 2}
   defendCard: {fileID: 11400000, guid: 1fce8215a5070e048b33d648fdf6d6b8, type: 2}
   saveableCards:
-  - {fileID: 11400000, guid: 123cc5bdd2b51814a84e20e1dabffc86, type: 2}
-  - {fileID: 11400000, guid: 1fce8215a5070e048b33d648fdf6d6b8, type: 2}
+  - {fileID: 11400000, guid: d26a83edefb9a754ca725064f4ec99a1, type: 2}
+  - {fileID: 11400000, guid: 01345cc8d1f0a734a83dbe2249a892d8, type: 2}
+  - {fileID: 11400000, guid: af18db83b3c6e284cad42ebbce170b88, type: 2}
+  - {fileID: 11400000, guid: 19273020c1153ad46a6e349743b635f1, type: 2}
+  - {fileID: 11400000, guid: e2b6cd8c863955645837669bf87901b0, type: 2}
+  - {fileID: 11400000, guid: c8e84fcbfd3dec549aecb7bfee67a342, type: 2}
   - {fileID: 11400000, guid: c2450137ed0a66b4d93d514d3c58aee6, type: 2}
   - {fileID: 11400000, guid: e7ce1a68cb851934dad228c98f190b46, type: 2}
+  - {fileID: 11400000, guid: 123cc5bdd2b51814a84e20e1dabffc86, type: 2}
+  - {fileID: 11400000, guid: 1fce8215a5070e048b33d648fdf6d6b8, type: 2}
   englishFont: {fileID: 11400000, guid: f3d1af487b409ef4fb6255acd004062e, type: 2}
   thaiFont: {fileID: 11400000, guid: a010065776efb054898ce42f9fd30507, type: 2}
 --- !u!4 &1892064329

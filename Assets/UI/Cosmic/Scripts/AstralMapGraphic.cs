@@ -7,12 +7,21 @@ using UnityEngine.UI;
 [RequireComponent(typeof(CanvasRenderer))]
 public sealed class AstralMapGraphic : MaskableGraphic
 {
-    public enum Motif { Frame, Divider, NodeRing, Swords, Skull, Flame, Pouch, Eclipse, Question, Heart, Coin, Crescent, Chevron, ButtonFrame }
+    public enum Motif { Frame, Divider, NodeRing, Swords, Skull, Flame, Pouch, Eclipse, Question, Heart, Coin, Crescent, Chevron, ButtonFrame, Shield }
     public Motif motif;
     public float emphasis;
     public Color detailColor = new Color(0.012f, 0.008f, 0.026f, 1f);
     private VertexHelper mesh;
     private float unit;
+    private float cachedCanvasScale = -1f;
+
+    private void LateUpdate()
+    {
+        float scale = canvas == null ? 1f : canvas.scaleFactor;
+        if (Mathf.Abs(scale - cachedCanvasScale) < .001f) return;
+        cachedCanvasScale = scale;
+        SetVerticesDirty();
+    }
 
     protected override void OnPopulateMesh(VertexHelper vh)
     {
@@ -26,6 +35,11 @@ public sealed class AstralMapGraphic : MaskableGraphic
             case Motif.Divider: Divider(); break;
             case Motif.NodeRing: NodeRing(); break;
             case Motif.Swords: Swords(); break;
+            case Motif.Shield:
+                Shape(color, new Vector2(-.62f,.62f), new Vector2(0,.82f), new Vector2(.62f,.62f),
+                    new Vector2(.50f,-.18f), new Vector2(0,-.78f), new Vector2(-.50f,-.18f));
+                Line(P(0,.62f), P(0,-.5f), unit*.05f, detailColor);
+                break;
             case Motif.Skull: Skull(); break;
             case Motif.Flame: Flame(); break;
             case Motif.Pouch: Pouch(); break;
@@ -49,6 +63,10 @@ public sealed class AstralMapGraphic : MaskableGraphic
     }
     private void Line(Vector2 a, Vector2 b, float width, Color tint)
     {
+        // Thin reference-space strokes can disappear between pixels on smaller
+        // Game views. Keep at least 1.4 physical pixels, including during hover.
+        float scale = canvas == null ? 1f : Mathf.Max(.1f, canvas.scaleFactor);
+        width = Mathf.Max(width, 1.4f / scale);
         Vector2 normal = new Vector2(-(b-a).y, (b-a).x).normalized * width * .5f;
         Quad(a-normal,a+normal,b+normal,b-normal,tint);
     }

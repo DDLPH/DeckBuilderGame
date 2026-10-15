@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: StrikeDamage
   m_EditorClassIdentifier: Assembly-CSharp::DamageEffect
   targetType: 1
-  damageAmount: 100
+  damageAmount: 6

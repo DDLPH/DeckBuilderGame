@@ -16,16 +16,13 @@ public sealed class CosmicMenuActions : MonoBehaviour
 
     private void Start()
     {
-        AudioSource clickSound = GameObject.Find("MainMenuSFX")?.GetComponent<AudioSource>();
-
-        // Visual feedback is added at runtime so existing scene button callbacks and
-        // the user's click sounds are left untouched.
-        AddButtonEffect(transform.Find("StartButton"), clickSound);
+        // Preserve gameplay callbacks; replace only old AudioSource.Play click callbacks.
+        AddButtonEffect(transform.Find("StartButton"));
         AddButtonEffect(transform.Find("ContinueButton"));
         AddButtonEffect(settingsButton != null ? settingsButton.transform : null);
         AddButtonEffect(quitButton != null ? quitButton.transform : null);
-        // These two buttons have no working click-sound callback in the scene.
-        AddButtonEffect(languageButton != null ? languageButton.transform : null, clickSound);
+        // Language buttons use the same single sound owner as other menu buttons.
+        AddButtonEffect(languageButton != null ? languageButton.transform : null);
         AddButtonEffect(settingsLanguageButton != null ? settingsLanguageButton.transform : null);
         AddButtonEffect(closeSettingsButton != null ? closeSettingsButton.transform : null);
 
@@ -100,5 +97,9 @@ public sealed class CosmicMenuActions : MonoBehaviour
             effect = buttonTransform.gameObject.AddComponent<CosmicButtonEffect>();
         }
         effect.clickSound = clickSound;
+        Button button = buttonTransform.GetComponent<Button>();
+        for (int i = 0; i < button.onClick.GetPersistentEventCount(); i++)
+            if (button.onClick.GetPersistentTarget(i) is AudioSource && button.onClick.GetPersistentMethodName(i) == "Play")
+                button.onClick.SetPersistentListenerState(i, UnityEngine.Events.UnityEventCallState.Off);
     }
 }

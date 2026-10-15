@@ -118,18 +118,18 @@ public static class CosmicAuditChecks
             Directory.Delete(directory);
         }
     }
-    public static void Render(Canvas canvas, string filename)
+    public static void Render(Canvas canvas, string filename, int width=1920, int height=1080)
     {
         GameObject cameraObject = new GameObject("AuditCamera", typeof(Camera));
         Camera camera = cameraObject.GetComponent<Camera>();
         camera.transform.position = new Vector3(0, 0, -10); camera.orthographic = true; camera.orthographicSize = 5.4f;
         camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = Color.black;
-        var target = new RenderTexture(1920, 1080, 24); target.Create(); camera.targetTexture = target;
+        var target = new RenderTexture(width, height, 24); target.Create(); camera.targetTexture = target;
         canvas.renderMode = RenderMode.ScreenSpaceCamera; canvas.worldCamera = camera; canvas.planeDistance = 10;
         foreach (TMP_Text text in canvas.GetComponentsInChildren<TMP_Text>()) text.ForceMeshUpdate();
         Canvas.ForceUpdateCanvases(); camera.Render(); RenderTexture.active = target;
-        var image = new Texture2D(1920, 1080, TextureFormat.RGBA32, false);
-        image.ReadPixels(new Rect(0, 0, 1920, 1080), 0, 0); image.Apply();
+        var image = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        image.ReadPixels(new Rect(0, 0, width, height), 0, 0); image.Apply();
         File.WriteAllBytes(Path.Combine("C:/Users/iiTzDemmy/Desktop/GameProject", filename), image.EncodeToPNG());
         RenderTexture.active = null; camera.targetTexture = null; target.Release();
         UnityEngine.Object.DestroyImmediate(image); UnityEngine.Object.DestroyImmediate(target); UnityEngine.Object.DestroyImmediate(cameraObject);

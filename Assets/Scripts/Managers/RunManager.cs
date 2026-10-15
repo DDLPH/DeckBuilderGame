@@ -83,17 +83,31 @@ public class RunManager : MonoBehaviour
         if (loadSave)
         {
             Debug.LogError("Continue failed. Existing save was kept; no new run was started.");
-            SceneManager.LoadScene("MainMenu");
+            CosmicSceneLoader.Load("MainMenu");
             Destroy(gameObject);
             return;
         }
 
-        mapGenerator.GenerateMap();
         StartNewRun();
     }
 
     public void StartNewRun()
     {
+        if (mapGenerator == null || mapManager == null || mapUIManager == null ||
+            strikeCard == null || defendCard == null)
+        {
+            Debug.LogError("Cannot start a new run: required references are missing.");
+            return;
+        }
+
+        // Every new run owns a fresh graph; Continue restores its saved graph instead.
+        mapGenerator.GenerateMap();
+        if (mapGenerator.CurrentMap == null || mapGenerator.CurrentMap.StartNode == null)
+        {
+            Debug.LogError("Cannot start a new run: map generation failed. Existing save was kept.");
+            return;
+        }
+
         eventPending = false;
         CurrentRun = new RunData();
 
@@ -153,6 +167,7 @@ public class RunManager : MonoBehaviour
 
         if (mapUIManager != null)
         {
+            mapUIManager.SetRunManager(this);
             mapUIManager.RefreshMapUI();
         }
         else
@@ -227,6 +242,7 @@ public class RunManager : MonoBehaviour
 
     public void MoveToNode(MapNode node)
     {
+        if (CosmicSceneLoader.IsLoading) return;
         if (CurrentRun == null)
         {
             Debug.LogError("Cannot move because CurrentRun is null");
@@ -385,23 +401,23 @@ public class RunManager : MonoBehaviour
         switch (CurrentRun.CurrentNode.NodeType)
         {
             case MapNodeType.NormalBattle:
-                SceneManager.LoadScene("BattleScene");
+                CosmicSceneLoader.Load("BattleScene");
                 break;
 
             case MapNodeType.Elite:
-                SceneManager.LoadScene("BattleScene");
+                CosmicSceneLoader.Load("BattleScene");
                 break;
 
             case MapNodeType.Boss:
-                SceneManager.LoadScene("BattleScene");
+                CosmicSceneLoader.Load("BattleScene");
                 break;
 
             case MapNodeType.Rest:
-                SceneManager.LoadScene("RestScene");
+                CosmicSceneLoader.Load("RestScene");
                 break;
 
             case MapNodeType.Shop:
-                SceneManager.LoadScene("ShopScene");
+                CosmicSceneLoader.Load("ShopScene");
                 break;
 
             case MapNodeType.Event:
@@ -570,13 +586,13 @@ public class RunManager : MonoBehaviour
         }
 
         mapGenerator =
-            FindFirstObjectByType<MapGenerator>();
+            FindAnyObjectByType<MapGenerator>();
 
         mapManager =
-            FindFirstObjectByType<MapManager>();
+            FindAnyObjectByType<MapManager>();
 
         mapUIManager =
-            FindFirstObjectByType<MapUIManager>();
+            FindAnyObjectByType<MapUIManager>();
 
         if (mapGenerator == null)
         {
@@ -634,11 +650,12 @@ public class RunManager : MonoBehaviour
             return;
         }
     
-        SceneManager.LoadScene("RewardScene");
+        CosmicSceneLoader.Load("RewardScene");
     }
 
     public void ReturnToMap()
     {
+        if (CosmicSceneLoader.IsLoading) return;
         if (CurrentRun == null)
         {
             Debug.LogError("Cannot return to Map because CurrentRun is null");
@@ -653,7 +670,7 @@ public class RunManager : MonoBehaviour
 
         Debug.Log("Returning To MapScene");
 
-        SceneManager.LoadScene("MapScene");
+        CosmicSceneLoader.Load("MapScene");
     }
 
     public void ResolveEvent(bool chooseGold)
@@ -685,7 +702,7 @@ public class RunManager : MonoBehaviour
         SceneManager.sceneLoaded -= OnSceneLoaded;
         instance = null;
         Destroy(gameObject);
-        SceneManager.LoadScene("MainMenu");
+        CosmicSceneLoader.Load("MainMenu");
     }
 
     public bool SaveCheckpoint()
@@ -704,14 +721,26 @@ public class RunManager : MonoBehaviour
     public void ShowRunResult(bool won)
     {
         if (!IsRunActive()) return;
-        if (won) CompleteRun(); else FailRun();
+        CosmicBattleUI battleUI = FindAnyObjectByType<CosmicBattleUI>();
+        Canvas canvas = battleUI != null ? battleUI.GetComponent<Canvas>() : FindAnyObjectByType<Canvas>();
+        if (canvas == null)
+        {
+            Debug.LogError("Cannot show run result: no screen canvas exists. Checkpoint was kept.");
+            return;
+        }
+        if (battleUI != null) battleUI.PrepareRunResult(won);
         bool thai = CosmicLanguage.IsThai;
-        CosmicModalDialog.Show(FindAnyObjectByType<Canvas>(), thai ? thaiFont : englishFont,
+        string summary = "\n\n" + (thai ? "ชั้น " : "FLOOR ") + CurrentRun.CurrentNode.LayerIndex +
+            "  •  " + (thai ? "ทอง " : "GOLD ") + CurrentRun.Gold +
+            "  •  " + CurrentRun.Deck.Count + (thai ? " การ์ด" : " CARDS");
+        CosmicModalDialog.Show(canvas, battleUI != null ? battleUI.Font : (thai ? thaiFont : englishFont),
             won ? (thai ? "พ้นจากความว่างเปล่า" : "RUN COMPLETE")
                 : (thai ? "การเดินทางสิ้นสุด" : "RUN ENDED"),
-            won ? (thai ? "คุณเอาชนะบอสได้แล้ว การเดินทางรอบนี้เสร็จสิ้น" : "You defeated the boss. This run is complete.")
-                : (thai ? "คุณพ่ายแพ้ในรอบนี้ กลับไปเริ่มการเดินทางครั้งใหม่ได้ที่เมนูหลัก" : "You fell in battle. Return to the menu to begin a new journey."),
-            thai ? "กลับเมนูหลัก" : "MAIN MENU", () => SceneManager.LoadScene("MainMenu"));
+            (won ? (thai ? "คุณเอาชนะบอสได้แล้ว การเดินทางรอบนี้เสร็จสิ้น" : "You defeated the boss. This run is complete.")
+                : (thai ? "คุณพ่ายแพ้ในรอบนี้ กลับไปเริ่มการเดินทางครั้งใหม่ได้ที่เมนูหลัก" : "You fell in battle. Return to the menu to begin a new journey.")) + summary,
+            thai ? "กลับเมนูหลัก" : "MAIN MENU", () => CosmicSceneLoader.Load("MainMenu"));
+        // Do not retire the checkpoint until the result UI was successfully created.
+        if (won) CompleteRun(); else FailRun();
     }
 
     private bool TryRestoreRun()

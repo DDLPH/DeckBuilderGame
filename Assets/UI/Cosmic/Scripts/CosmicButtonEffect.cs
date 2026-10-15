@@ -48,6 +48,7 @@ public sealed class CosmicButtonEffect : MonoBehaviour,
         button.transition = Selectable.Transition.None;
         CosmicUITheme.StyleButton(button);
         frame = CosmicUITheme.Frame(transform, true);
+        button.onClick.AddListener(PlayClick);
         Apply(0f, 0f, true);
     }
 
@@ -70,25 +71,27 @@ public sealed class CosmicButtonEffect : MonoBehaviour,
         if (originalScale != Vector3.zero) transform.localScale = originalScale;
     }
 
-    public void OnPointerEnter(PointerEventData eventData) { hovering = true; }
+    public void OnPointerEnter(PointerEventData eventData)
+    { hovering = true; if (button.IsInteractable()) CosmicAudio.Play(CosmicCue.Hover); }
     public void OnPointerExit(PointerEventData eventData) { hovering = false; pressing = false; }
     public void OnPointerDown(PointerEventData eventData)
     {
         if (eventData.button != PointerEventData.InputButton.Left || !button.IsInteractable()) return;
         pressing = true;
-        PlayClick();
     }
     public void OnPointerUp(PointerEventData eventData) { pressing = false; }
     public void OnSelect(BaseEventData eventData) { selected = true; }
     public void OnDeselect(BaseEventData eventData) { selected = false; pressing = false; }
-    public void OnSubmit(BaseEventData eventData) { PlayClick(); }
+    public void OnSubmit(BaseEventData eventData) { } // Button.onClick owns keyboard and pointer audio alike.
 
     private void PlayClick()
     {
-        if (button.IsInteractable() && clickSound != null && clickSound.clip != null)
+        // Button already validated the click. An earlier action may disable the button.
+        if (clickSound != null && clickSound.clip != null)
         {
             clickSound.PlayOneShot(clickSound.clip);
         }
+        else CosmicAudio.Play(CosmicCue.Click);
     }
 
     private void Apply(float glow, float pushed, bool interactable)

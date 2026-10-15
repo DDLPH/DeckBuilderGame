@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 59606f768e1d00346ae56d78f72e7175, type: 3}
   m_Name: NormalEncounter_3
   m_EditorClassIdentifier: Assembly-CSharp::EncounterDefinition
-  encounterName: Normal 3
+  encounterName: Lone pilgrim
   enemyGroups:
   - enemyPool: {fileID: 11400000, guid: 039d545d815508c41a204732b09ab43b, type: 2}
-    minimumCount: 3
-    maximumCount: 3
+    minimumCount: 1
+    maximumCount: 1

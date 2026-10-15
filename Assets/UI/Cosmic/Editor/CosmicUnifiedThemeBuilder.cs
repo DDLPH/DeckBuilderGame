@@ -27,8 +27,8 @@ public static class CosmicUnifiedThemeBuilder
         Place(title.rectTransform,new Vector2(0,1),new Vector2(0,1),new Vector2(95,-100),new Vector2(480,300));
         foreach(string rule in new[]{"TitleRuleTop","TitleRuleBottom"})
             canvas.Find(rule).GetComponent<Graphic>().color=CosmicUITheme.Border;
-        ((RectTransform)canvas.Find("TitleRuleTop")).sizeDelta=new Vector2(480,1.2f);
-        ((RectTransform)canvas.Find("TitleRuleBottom")).sizeDelta=new Vector2(480,1.2f);
+        ((RectTransform)canvas.Find("TitleRuleTop")).sizeDelta=new Vector2(480,2.5f);
+        ((RectTransform)canvas.Find("TitleRuleBottom")).sizeDelta=new Vector2(480,2.5f);
         string[] names={"ContinueButton","StartButton","SettingsButton","QuitButton"};
         for(int i=0;i<names.Length;i++)
         {
@@ -54,6 +54,9 @@ public static class CosmicUnifiedThemeBuilder
         Place(volumeLabel.rectTransform,new Vector2(0,1),new Vector2(0,1),new Vector2(95,-169),new Vector2(340,48));
         Slider slider=panel.Find("VolumeSlider").GetComponent<Slider>();
         Place((RectTransform)slider.transform,new Vector2(.5f,1),new Vector2(.5f,.5f),new Vector2(0,-246),new Vector2(550,40));
+        Image hitArea=slider.GetComponent<Image>();
+        if(hitArea==null)hitArea=slider.gameObject.AddComponent<Image>();
+        hitArea.color=Color.clear;hitArea.raycastTarget=true;
         foreach(string part in new[]{"Track"})
         {
             RectTransform rect=(RectTransform)slider.transform.Find(part);Stretch(rect);

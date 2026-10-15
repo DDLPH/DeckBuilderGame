@@ -165,7 +165,7 @@ public static class CosmicThemeApplier
         title.alignment = TextAlignmentOptions.Center;
         title.characterSpacing = 5;
         title.lineSpacing = -8;
-        title.enableWordWrapping = false;
+        title.textWrappingMode = TextWrappingModes.NoWrap;
         SetRect((RectTransform)titleTransform, new Vector2(0f, 1f), new Vector2(0f, 1f),
             new Vector2(0f, 1f), new Vector2(82f, -76f), new Vector2(500f, 310f));
 

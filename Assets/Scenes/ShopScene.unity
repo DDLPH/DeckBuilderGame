@@ -286,9 +286,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ShopManager
   shopCards:
-  - {fileID: 11400000, guid: 123cc5bdd2b51814a84e20e1dabffc86, type: 2}
-  - {fileID: 11400000, guid: 1fce8215a5070e048b33d648fdf6d6b8, type: 2}
-  cardPrice: 50
+  - {fileID: 11400000, guid: d26a83edefb9a754ca725064f4ec99a1, type: 2}
+  - {fileID: 11400000, guid: 01345cc8d1f0a734a83dbe2249a892d8, type: 2}
+  - {fileID: 11400000, guid: af18db83b3c6e284cad42ebbce170b88, type: 2}
+  - {fileID: 11400000, guid: 19273020c1153ad46a6e349743b635f1, type: 2}
+  - {fileID: 11400000, guid: e2b6cd8c863955645837669bf87901b0, type: 2}
+  - {fileID: 11400000, guid: c8e84fcbfd3dec549aecb7bfee67a342, type: 2}
+  - {fileID: 11400000, guid: c2450137ed0a66b4d93d514d3c58aee6, type: 2}
+  - {fileID: 11400000, guid: e7ce1a68cb851934dad228c98f190b46, type: 2}
+  cardPrice: 45
   shopCardPrefab: {fileID: 181237572031748656, guid: 98c400b2608559e44b22d8d82f14b32d, type: 3}
   shopCardContainer: {fileID: 1636292469}
 --- !u!4 &128519887

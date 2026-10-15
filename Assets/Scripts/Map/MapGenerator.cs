@@ -78,6 +78,7 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
+        CurrentMap = null;
         Debug.LogError(
             "Map Generation Failed after " +
             MaxGenerationAttempts +

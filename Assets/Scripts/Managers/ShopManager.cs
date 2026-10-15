@@ -16,7 +16,7 @@ public class ShopManager : MonoBehaviour
 
     private void Start()
     {
-        runManager = FindFirstObjectByType<RunManager>();
+        runManager = FindAnyObjectByType<RunManager>();
 
         if (runManager == null)
         {

@@ -27,7 +27,7 @@ public class Card : MonoBehaviour
 
     private void Awake()
     {
-        battleManager = FindFirstObjectByType<BattleManager>();
+        battleManager = FindAnyObjectByType<BattleManager>();
 
         if (battleManager == null)
         {

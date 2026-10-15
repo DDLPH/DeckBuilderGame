@@ -17,8 +17,16 @@ public sealed class CosmicModalDialog : MonoBehaviour
         string title, string message, string accept, Action confirmed, string cancel = null)
     {
         if (canvas == null) throw new InvalidOperationException("A canvas is required for a modal dialog.");
+        // Enemy prefabs contain nested canvases under a transparent legacy group.
+        // A screen modal always belongs to the visible root, never to a combatant.
+        canvas = canvas.rootCanvas;
         GameObject root = new GameObject("CosmicConfirmation", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        root.layer = 5;
         root.transform.SetParent(canvas.transform, false);
+        Canvas modalCanvas = root.AddComponent<Canvas>();
+        modalCanvas.overrideSorting = true;
+        modalCanvas.sortingOrder = canvas.sortingOrder + 100;
+        root.AddComponent<GraphicRaycaster>();
         RectTransform rect = root.GetComponent<RectTransform>();
         rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
         rect.offsetMin = rect.offsetMax = Vector2.zero;

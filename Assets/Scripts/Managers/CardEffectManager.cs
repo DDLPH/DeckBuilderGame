@@ -40,7 +40,8 @@ public class CardEffectManager : MonoBehaviour
             new CardEffectContext(
                 player,
                 enemies,
-                selectedEnemy
+                selectedEnemy,
+                FindAnyObjectByType<DeckManager>()
             );
 
         foreach (CardEffect effect in card.Effects)

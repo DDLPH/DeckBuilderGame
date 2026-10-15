@@ -10,7 +10,7 @@ public class BattleUIManager : MonoBehaviour
 
     private void Awake()
     {
-        battleManager = FindFirstObjectByType<BattleManager>();
+        battleManager = FindAnyObjectByType<BattleManager>();
 
         if (battleManager == null)
         {

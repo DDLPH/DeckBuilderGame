@@ -30,7 +30,7 @@ public class RestManager : MonoBehaviour
     private void FindRunManager()
     {
         runManager =
-            FindFirstObjectByType<RunManager>();
+            FindAnyObjectByType<RunManager>();
 
         if (runManager == null)
         {

@@ -30,7 +30,21 @@ public static class RunSaveSystem
         public List<string> cards = new List<string>();
     }
 
-    private static string SavePath => Path.Combine(Application.persistentDataPath, "run-save.json");
+    private static string SavePath => Path.Combine(SaveDirectory, "run-save.json");
+    private static string SaveDirectory
+    {
+        get
+        {
+#if UNITY_EDITOR
+            if (EditorTestDirectory != null) return EditorTestDirectory;
+#endif
+            return Application.persistentDataPath;
+        }
+    }
+#if UNITY_EDITOR
+    // Tests opt in explicitly; builds cannot redirect or bypass player saves.
+    public static string EditorTestDirectory { get; set; }
+#endif
 
     public static bool HasSave => File.Exists(SavePath) || File.Exists(SavePath + ".bak");
 
@@ -147,7 +161,7 @@ public static class RunSaveSystem
             }
             if (!Validate(data)) throw new InvalidDataException("Run checkpoint is incomplete or invalid.");
 
-            Directory.CreateDirectory(Application.persistentDataPath);
+            Directory.CreateDirectory(SaveDirectory);
             WriteSnapshot(data, SavePath);
             return true;
         }

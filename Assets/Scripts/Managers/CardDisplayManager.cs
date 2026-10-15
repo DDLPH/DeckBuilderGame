@@ -8,6 +8,13 @@ public class CardDisplayManager : MonoBehaviour
 
     public void RefreshHand()
     {
+        CosmicBattleUI cosmic = FindAnyObjectByType<CosmicBattleUI>();
+        if (cosmic != null)
+        {
+            cosmic.RefreshHand();
+            return;
+        }
+
         if (deckManager == null)
         {
             Debug.LogError("CardDisplayManager : DeckManager is null");

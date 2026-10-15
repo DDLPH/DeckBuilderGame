@@ -14,6 +14,7 @@ public class CardData : ScriptableObject
 
     [Header("Card Stats")]
     [SerializeField] private int energyCost;
+    [SerializeField] private bool exhausts;
     
     [Header("Card Effects")]
 
@@ -29,6 +30,7 @@ public class CardData : ScriptableObject
     public CardRarity Rarity => rarity;
     
     public int EnergyCost => energyCost;
+    public bool Exhausts => exhausts;
 
     public List<CardEffect> Effects => effects;
 

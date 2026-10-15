@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -22,6 +23,33 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private CardData selectedCard;
 
     private BattleState currentState;
+    private bool resolvingCard;
+    private bool paused;
+    public bool InteractionLocked { get; set; }
+    public int TurnNumber { get; private set; }
+    public BattleState State => currentState;
+    public PlayerData Player => player;
+    public bool CanInteract => currentState == BattleState.PlayerTurn && !paused && !resolvingCard && !InteractionLocked && !CosmicSceneLoader.IsLoading;
+    public event System.Action<CardData, EnemyData> CardPlayed;
+    public event System.Action<EnemyData> EnemyActing;
+
+    public void SetPaused(bool value) { paused = value; }
+
+    public bool CanUseCard(CardData card)
+    {
+        return CanInteract && card != null && card.EnergyCost >= 0 &&
+            deckManager != null && deckManager.CanPlayCard(card) && player != null &&
+            !player.IsDead() && player.CurrentEnergy >= card.EnergyCost;
+    }
+
+    public bool CanUseCardOn(CardData card, EnemyData enemy)
+    {
+        if (!CanUseCard(card)) return false;
+        if (!RequiresEnemyTarget(card)) return enemy == null;
+        if (enemy == null || enemy.IsDead() || enemyManager == null) return false;
+        foreach (EnemyData member in enemyManager.Enemies) if (member == enemy) return true;
+        return false;
+    }
 
     private void Start()
     {
@@ -30,7 +58,7 @@ public class BattleManager : MonoBehaviour
 
     private void Update()
     {
-        if (currentState != BattleState.PlayerTurn)
+        if (!CanInteract)
         {
             return;
         }
@@ -68,9 +96,18 @@ public class BattleManager : MonoBehaviour
     private void StartBattle()
     {
         currentState = BattleState.Start;
+        TurnNumber = 0;
 
         Debug.Log("Battle Started");
 
+        if (!ValidateManagers()) return;
+        RunManager activeRun = FindAnyObjectByType<RunManager>();
+        if (activeRun == null || !activeRun.IsRunActive())
+        {
+            CosmicBattleUI screen = FindAnyObjectByType<CosmicBattleUI>();
+            if (screen != null) screen.ShowMissingRun();
+            return;
+        }
         LoadPlayerRunData();
 
         RefreshBattleUI();
@@ -203,6 +240,7 @@ public class BattleManager : MonoBehaviour
 
     private void StartPlayerTurn()
     {
+        TurnNumber++;
         SetupPlayerTurn();
 
         currentState = BattleState.PlayerTurn;
@@ -250,7 +288,7 @@ public class BattleManager : MonoBehaviour
 
     public void SelectCard(CardData card)
     {
-        if (currentState != BattleState.PlayerTurn)
+        if (!CanUseCard(card))
         {
             return;
         }
@@ -306,102 +344,55 @@ public class BattleManager : MonoBehaviour
         return false;
     }
 
+    public static bool NeedsEnemy(CardData card)
+    {
+        if (card == null || card.Effects == null) return false;
+        foreach (CardEffect effect in card.Effects)
+            if (effect != null && effect.Target == TargetType.SingleEnemy) return true;
+        return false;
+    }
+
+    public static bool TargetsEnemySide(CardData card)
+    {
+        if (card == null || card.Effects == null) return false;
+        foreach (CardEffect effect in card.Effects)
+            if (effect != null && effect.Target != TargetType.Player) return true;
+        return false;
+    }
+
     public void PlaySelectedCard()
     {
-        if (currentState != BattleState.PlayerTurn)
+        TryPlayCard(selectedCard, RequiresEnemyTarget(selectedCard) ? battleTargetManager.SelectedEnemy : null);
+    }
+
+    public bool TryPlayCard(CardData card, EnemyData targetEnemy)
+    {
+        if (!CanUseCardOn(card, targetEnemy)) return false;
+        // One authority for click and drag: validate before spending or resolving.
+        resolvingCard = true;
+        try
         {
-            return;
+            if (!player.TryUseEnergy(card.EnergyCost)) return false;
+            cardEffectManager.Resolve(card, player, enemyManager.Enemies, targetEnemy);
+            deckManager.PlayCard(card);
+            selectedCard = null;
+            battleTargetManager.EndTargetSelection();
+            battleTargetManager.ClearTarget();
+            CardPlayed?.Invoke(card, targetEnemy);
+            enemyManager.RefreshEnemyUI();
+            RefreshBattleUI();
+            cardDisplayManager.RefreshHand();
+            ProcessBattleEnd();
+            return true;
         }
-
-        if (selectedCard == null)
-        {
-            Debug.Log(
-                "BattleManager : No Card Selected"
-            );
-
-            return;
-        }
-
-        if (!deckManager.CanPlayCard(selectedCard))
-        {
-            Debug.Log(
-                "BattleManager : Card is not in Hand"
-            );
-
-            return;
-        }
-
-        EnemyData targetEnemy =
-            battleTargetManager.SelectedEnemy;
-
-        if (RequiresEnemyTarget(selectedCard))
-        {
-            if (targetEnemy == null)
-            {
-                Debug.Log(
-                    "BattleManager : No Enemy Target Selected"
-                );
-
-                return;
-            }
-
-            if (targetEnemy.IsDead())
-            {
-                battleTargetManager.ClearTarget();
-
-                return;
-            }
-        }
-
-        int cost =
-            selectedCard.EnergyCost;
-
-        if (!player.TryUseEnergy(cost))
-        {
-            Debug.Log(
-                "BattleManager : Not Enough Energy"
-            );
-
-            return;
-        }
-
-        cardEffectManager.Resolve(
-            selectedCard,
-            player,
-            enemyManager.Enemies,
-            targetEnemy
-        );
-
-        enemyManager.RefreshEnemyUI();
-
-        RefreshBattleUI();
-
-        deckManager.PlayCard(selectedCard);
-
-        Debug.Log(
-            "Card Played : " +
-            selectedCard.CardName
-        );
-
-        selectedCard = null;
-
-        battleTargetManager.ClearTarget();
-
-        cardDisplayManager.RefreshHand();
-
-        ProcessBattleEnd();
-
-        if (currentState == BattleState.End)
-        {
-            return;
-        }
+        finally { resolvingCard = false; }
     }
 
     ///// Player Turn End /////
 
     public void EndPlayerTurn()
     {
-        if (currentState != BattleState.PlayerTurn)
+        if (!CanInteract)
         {
             return;
         }
@@ -420,7 +411,26 @@ public class BattleManager : MonoBehaviour
 
         Debug.Log("Player Turn Ended");
 
-        StartEnemyTurn();
+        StartCoroutine(EnemyTurnSequence());
+    }
+
+    private IEnumerator EnemyTurnSequence()
+    {
+        enemyManager.ResetEnemyBlocks();
+        yield return new WaitForSeconds(.35f);
+        foreach (EnemyData enemy in enemyManager.Enemies)
+        {
+            if (enemy == null || enemy.IsDead()) continue;
+            EnemyActing?.Invoke(enemy);
+            yield return new WaitForSeconds(.15f);
+            enemyManager.PerformAction(enemy);
+            RefreshBattleUI();
+            ProcessBattleEnd();
+            if (currentState == BattleState.End) yield break;
+            yield return new WaitForSeconds(.45f);
+        }
+        PrepareEnemyActions();
+        EndEnemyTurn();
     }
 
     ///// Enemy Turn /////
@@ -499,6 +509,7 @@ public class BattleManager : MonoBehaviour
 
     private void ProcessBattleEnd()
     {
+        if (currentState == BattleState.End) return;
         if (player.IsDead())
         {
             HandlePlayerLose();
@@ -539,12 +550,13 @@ public class BattleManager : MonoBehaviour
 
     private void HandlePlayerWin()
     {
+        EndBattle();
         Debug.Log("Player Win");
 
         SavePlayerRunData();
 
         RunManager runManager =
-            FindFirstObjectByType<RunManager>();
+            FindAnyObjectByType<RunManager>();
 
         if (runManager == null)
         {
@@ -554,7 +566,6 @@ public class BattleManager : MonoBehaviour
 
         if (runManager.IsCurrentNodeBoss())
         {
-            EndBattle();
             runManager.ShowRunResult(true);
             return;
         }
@@ -563,11 +574,10 @@ public class BattleManager : MonoBehaviour
 
     private void HandlePlayerLose()
     {
+        EndBattle();
         Debug.Log("Player Loses!");
         RunManager runManager = FindAnyObjectByType<RunManager>();
         if (runManager != null) runManager.ShowRunResult(false);
-
-        EndBattle();
     }
 
     private void EndBattle()
@@ -582,7 +592,7 @@ public class BattleManager : MonoBehaviour
     private void LoadPlayerRunData()
     {
         RunManager runManager =
-            FindFirstObjectByType<RunManager>();
+            FindAnyObjectByType<RunManager>();
 
         if (runManager == null)
         {
@@ -639,7 +649,7 @@ public class BattleManager : MonoBehaviour
     private void SavePlayerRunData()
     {
         RunManager runManager =
-            FindFirstObjectByType<RunManager>();
+            FindAnyObjectByType<RunManager>();
 
         if (runManager == null)
         {

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20f3d7eef5d4a7349a6f233216ff781c, type: 3}
+  m_Name: MoonWard
+  m_EditorClassIdentifier: Assembly-CSharp::CardData
+  cardName: Moon Ward
+  description: Gain 8 Block.
+  cardType: 1
+  rarity: 0
+  energyCost: 1
+  exhausts: 0
+  effects:
+  - {fileID: 11400000, guid: f1b8b093a305b5446ab6c4ea068cfc07, type: 2}
+  upgradedCard: {fileID: 0}

@@ -249,6 +249,11 @@ public class EnemyManager : MonoBehaviour
         }
     }
 
+    public void PerformAction(EnemyData enemy)
+    {
+        if (enemy != null && !enemy.IsDead()) ExecuteAction(enemy, enemy.CurrentAction);
+    }
+
     public void RefreshEnemyUI()
     {
         if (enemies == null)

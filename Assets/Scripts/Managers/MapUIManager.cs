@@ -38,6 +38,7 @@ public class MapUIManager : MonoBehaviour
 
     private bool hasLoggedInitialMapUI;
     private bool hasBuiltMapUI;
+    private MapData displayedMap;
 
     private Dictionary<MapNode, RectTransform> nodeUIMap =
         new Dictionary<MapNode, RectTransform>();
@@ -114,11 +115,16 @@ public class MapUIManager : MonoBehaviour
 
     public void RefreshMapUI()
     {
-        if (!hasBuiltMapUI)
+        MapData map = runManager != null && runManager.CurrentRun != null
+            ? runManager.CurrentRun.CurrentMap : null;
+        // A refresh before RunManager.Start must not mark an empty UI as built.
+        if (map == null) return;
+
+        if (!hasBuiltMapUI || displayedMap != map)
         {
             BuildMapUI();
-
-            hasBuiltMapUI = true;
+            hasBuiltMapUI = nodeUIMap.Count == map.Nodes.Count && nodeUIMap.Count > 0;
+            displayedMap = hasBuiltMapUI ? map : null;
 
             return;
         }
@@ -930,9 +936,7 @@ public class MapUIManager : MonoBehaviour
                 i--
             )
             {
-                Destroy(
-                    connectionLayer.GetChild(i).gameObject
-                );
+                RemoveMapObject(connectionLayer.GetChild(i).gameObject);
             }
         }
 
@@ -955,13 +959,22 @@ public class MapUIManager : MonoBehaviour
                     continue;
                 }
 
-                Destroy(
-                    child.gameObject
-                );
+                RemoveMapObject(child.gameObject);
             }
         }
 
         nodeUIMap.Clear();
+        hasBuiltMapUI = false;
+        displayedMap = null;
+    }
+
+    private static void RemoveMapObject(GameObject target)
+    {
+        // Detach immediately so a same-frame rebuild cannot count or click old nodes.
+        target.SetActive(false);
+        target.transform.SetParent(null, false);
+        if (Application.isPlaying) Destroy(target);
+        else DestroyImmediate(target);
     }
 
 
